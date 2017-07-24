@@ -1,0 +1,91 @@
+# Kodi Media Center language file
+# Addon Name: ZONA.mobi
+# Addon id: plugin.video.zona.mobi
+# Addon Provider: vl.maksime
+
+msgid ""
+msgstr ""
+
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: en\n"
+
+msgctxt "#30000"
+msgid "Movies"
+msgstr ""
+
+msgctxt "#30001"
+msgid "TV Series"
+msgstr ""
+
+msgctxt "#30002"
+msgid "Search"
+msgstr ""
+
+msgctxt "#30004"
+msgid "Season"
+msgstr ""
+
+msgctxt "#30005"
+msgid "Episode"
+msgstr ""
+
+msgctxt "#30006"
+msgid "Next page..."
+msgstr ""
+
+msgctxt "#30007"
+msgid "New Search..."
+msgstr ""
+
+msgctxt "#30008"
+msgid "Nothing found!"
+msgstr ""
+
+msgctxt "#30009"
+msgid "Connection error"
+msgstr ""
+
+msgctxt "#30011"
+msgid "Video Quality"
+msgstr ""
+
+msgctxt "#30012"
+msgid "Page"
+msgstr ""
+
+msgctxt "#30013"
+msgid "All"
+msgstr ""
+
+msgctxt "#30018"
+msgid "File names for saving with 'Add To Lib'"
+msgstr ""
+
+msgctxt "#30019"
+msgid "Show Movie info in list (slower)"
+msgstr ""
+
+msgctxt "#30020"
+msgid "Previous page..."
+msgstr ""
+
+msgctxt "#30022"
+msgid "Genres"
+msgstr ""
+
+msgctxt "#30024"
+msgid "Rating source"
+msgstr ""
+
+msgctxt "#30025"
+msgid "iMDB"
+msgstr ""
+
+msgctxt "#30026"
+msgid "KinoPoisk"
+msgstr ""
+
+msgctxt "#30029"
+msgid "Search history length"
+msgstr ""
