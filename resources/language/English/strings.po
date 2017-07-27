@@ -46,46 +46,90 @@ msgctxt "#30009"
 msgid "Connection error"
 msgstr ""
 
-msgctxt "#30011"
-msgid "Video Quality"
-msgstr ""
-
-msgctxt "#30012"
+msgctxt "#30010"
 msgid "Page"
 msgstr ""
 
-msgctxt "#30013"
+msgctxt "#30011"
 msgid "All"
 msgstr ""
 
-msgctxt "#30018"
-msgid "File names for saving with 'Add To Lib'"
-msgstr ""
-
-msgctxt "#30019"
-msgid "Show Movie info in list (slower)"
-msgstr ""
-
-msgctxt "#30020"
+msgctxt "#30012"
 msgid "Previous page..."
 msgstr ""
 
-msgctxt "#30022"
-msgid "Genres"
+msgctxt "#30013"
+msgid "Genre"
 msgstr ""
 
-msgctxt "#30024"
+msgctxt "#30014"
+msgid "Year"
+msgstr ""
+
+msgctxt "#30015"
+msgid "Country"
+msgstr ""
+
+msgctxt "#30016"
+msgid "Sort"
+msgstr ""
+
+msgctxt "#30014"
+msgid "Year"
+msgstr ""
+
+msgctxt "#30015"
+msgid "Country"
+msgstr ""
+
+msgctxt "#30016"
+msgid "Sort"
+msgstr ""
+
+msgctxt "#30017"
+msgid "Rating"
+msgstr ""
+
+msgctxt "#30018"
+msgid "Empty"
+msgstr ""
+
+msgctxt "#30201"
+msgid "File names for saving with 'Add To Lib'"
+msgstr ""
+
+msgctxt "#30202"
+msgid "Search history length"
+msgstr ""
+
+msgctxt "#30203"
+msgid "Show description in list (slower)"
+msgstr ""
+
+msgctxt "#30210"
+msgid "Video Quality"
+msgstr ""
+
+msgctxt "#30211"
+msgid "Low"
+msgstr ""
+
+msgctxt "#30212"
+msgid "Hight"
+msgstr ""
+
+msgctxt "#30220"
 msgid "Rating source"
 msgstr ""
 
-msgctxt "#30025"
+msgctxt "#30221"
+msgid "ZONA"
+msgstr ""
+
+msgctxt "#30222"
 msgid "iMDB"
 msgstr ""
 
-msgctxt "#30026"
+msgctxt "#30223"
 msgid "KinoPoisk"
-msgstr ""
-
-msgctxt "#30029"
-msgid "Search history length"
 msgstr ""

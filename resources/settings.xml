@@ -1,11 +1,11 @@
 ﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <settings>
-    <setting label="30018" type="bool" id="use_atl_names" default="false" />
-    <setting label="30029" type="labelenum" id="history_length" values="5|10|15|20|25" default="10" />
+    <setting label="30201" type="bool" id="use_atl_names" default="false" />
+    <setting label="30202" type="labelenum" id="history_length" values="5|10|15|20|25" default="10" />
     <setting type="sep"/>
-    <setting label="30011" type="enum" id="video_quality" lvalues="LQ|HD" default="0"/>
-    <setting label="30019" type="bool" id="load_details" default="true"/>
-    <setting label="30024" type="enum" id="movie_rating" lvalues="ZONA|30025|30026" default="0" />
-    <setting type="bool" id="united_search" visible="false" default="false" />
+    <setting label="30210" type="enum" id="video_quality" lvalues="30211|30212" default="0"/>
+    <setting label="30203" type="bool" id="load_details" default="true"/>
+    <setting label="30220" type="enum" id="movie_rating" lvalues="30221|30222|30223" default="0" />
+    <setting type="bool" id="united_search" visible="false" default="true" />
     <setting type="text" id="us_command" visible="false" default="action=search&keyword=" />
 </settings>

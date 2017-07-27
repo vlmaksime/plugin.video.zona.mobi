@@ -46,46 +46,78 @@ msgctxt "#30009"
 msgid "Connection error"
 msgstr "Ошибка подключения"
 
-msgctxt "#30011"
-msgid "Video Quality"
-msgstr "Качество видео"
-
-msgctxt "#30012"
+msgctxt "#30010"
 msgid "Page"
 msgstr "Страница"
 
-msgctxt "#30013"
+msgctxt "#30011"
 msgid "All"
 msgstr "Все"
 
-msgctxt "#30018"
-msgid "File names for saving with 'Add To Lib'"
-msgstr "Имена файлов для распознования в 'Add To Lib'"
-
-msgctxt "#30019"
-msgid "Show Movie info in list (slower)"
-msgstr "Показывать описание в списке (медленнее)"
-
-msgctxt "#30020"
+msgctxt "#30012"
 msgid "Previous page..."
 msgstr "Предыдущая страница..."
 
-msgctxt "#30022"
-msgid "Genres"
+msgctxt "#30013"
+msgid "Genre"
 msgstr "Жанры"
 
-msgctxt "#30024"
+msgctxt "#30014"
+msgid "Year"
+msgstr "Год"
+
+msgctxt "#30015"
+msgid "Country"
+msgstr "Страна"
+
+msgctxt "#30016"
+msgid "Sort"
+msgstr "Порядок"
+
+msgctxt "#30017"
+msgid "Rating"
+msgstr "Рейтинг"
+
+msgctxt "#30018"
+msgid "Empty"
+msgstr "Пусто"
+
+msgctxt "#30201"
+msgid "File names for saving with 'Add To Lib'"
+msgstr "Имена файлов для распознования в 'Add To Lib'"
+
+msgctxt "#30202"
+msgid "Search history length"
+msgstr "Длина истории поиска"
+
+msgctxt "#30203"
+msgid "Show description in list (slower)"
+msgstr "Показывать описание в списке (медленнее)"
+
+msgctxt "#30210"
+msgid "Video Quality"
+msgstr "Качество видео"
+
+msgctxt "#30211"
+msgid "Low"
+msgstr "Низкое"
+
+msgctxt "#30212"
+msgid "Hight"
+msgstr "Высокое"
+
+msgctxt "#30220"
 msgid "Rating source"
 msgstr "Источник рейтинга"
 
-msgctxt "#30025"
+msgctxt "#30221"
+msgid "ZONA"
+msgstr ""
+
+msgctxt "#30222"
 msgid "iMDB"
 msgstr ""
 
-msgctxt "#30026"
+msgctxt "#30223"
 msgid "KinoPoisk"
 msgstr "КиноПоиск"
-
-msgctxt "#30029"
-msgid "Search history length"
-msgstr "Длина истории поиска"
