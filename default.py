@@ -2,32 +2,32 @@
 # Module: default
 # License: GPL v.3 https://www.gnu.org/copyleft/gpl.html
 
-import resources.lib.apizonamobi as apizonamobi
-import xbmcgui
-from simpleplugin import Plugin
 import xbmc
+import xbmcgui
+
+from simpleplugin import Plugin
+
+import resources.lib.apizonamobi as apizonamobi
 
 # Create plugin instance
 plugin = Plugin()
 _ = plugin.initialize_gettext()
 
 def init_api():
-    settings_list = ['video_quality', 'rating_source']
+    settings_list = ['video_quality']
 
     settings = {}
     for id in settings_list:
-        if id == 'rating_source':
-            rating_source = plugin.movie_rating
-            if rating_source == 0: settings[id] = ''
-            elif rating_source == 1: settings[id] = 'imdb'
-            elif rating_source == 2: settings[id] = 'kinopoisk'
-        else:
-            settings[id] = plugin.get_setting(id)
-
-    settings['episode_title'] = _('Episode').decode('utf-8')
-    settings['season_title']  = _('Season').decode('utf-8')
+        settings[id] = plugin.get_setting(id)
 
     return apizonamobi.zonamobi(settings)
+
+def _get_rating_source():
+    rating_source = plugin.movie_rating
+    if rating_source == 0: source = 'zona'
+    elif rating_source == 1: source = 'imdb'
+    elif rating_source == 2: source = 'kinopoisk'
+    return source
 
 def show_api_error(err):
     text = ''
@@ -49,10 +49,9 @@ def get_request_params( params ):
 
 @plugin.action()
 def root( params ):
-    listing = list_root()
-    return plugin.create_listing(listing, content='files')
+    return plugin.create_listing(_list_root(), content='files')
 
-def list_root():
+def _list_root():
     items = [{'action': 'list_videos',    'label': _('Movies'),    'params': {'cat': 'movies'}},
              {'action': 'list_videos',    'label': _('TV Series'), 'params': {'cat': 'tvseries'}},
              {'action': 'search_history', 'label': _('Search')}]
@@ -85,21 +84,24 @@ def list_videos( params ):
     if cur_page > 1:
         del dir_params['_page']
 
-    u_params = get_request_params(params)
-
     try:
-        video_list = get_video_list(cur_cat, u_params)
+        video_list = get_video_list(cur_cat, get_request_params(params))
         succeeded = True
     except apizonamobi.ZonaMobiApiError as err:
         show_api_error(err)
         succeeded = False
 
-    if cur_cat in ['videos', 'movies', 'tvseries', 'search']:
-        category = '%s %d' % (_('Page'), cur_page)
-    else:
-        category = video_list.get('title')
+    category_title = []
+    if cur_cat in ['movies', 'tvseries', 'search']:
+        category_title.append('%s %d' % (_('Page'), cur_page))
+    category_title.append(video_list.get('title'))
+    if cur_cat == 'episodes':
+        category_title.append('%s %s' % (_('Season').decode('utf-8'), video_list['season']))
+    category = ' / '.join(category_title)
 
-    if succeeded and cur_cat == 'seasons' and video_list['count'] == 1:
+    if succeeded \
+      and cur_cat == 'seasons' \
+      and video_list['count'] == 1:
         dir_params['cat'] = 'episodes'
         url = plugin.get_url(action='list_videos', _season = 1, **dir_params)
         xbmc.executebuiltin('Container.Update("%s")' % url)
@@ -111,23 +113,28 @@ def list_videos( params ):
         listing = []
 
     if cur_cat == 'episodes':
-        sort_methods=[27]
+        sort_methods=[24]
+    elif cur_cat == 'seasons':
+        sort_methods=[1]
+    # elif cur_cat == 'tvseries':
+        # sort_methods=[0, 1, 24, 36, 21, 18]
     else:
         sort_methods=[0]
+
     return plugin.create_listing(listing, content=content, succeeded=succeeded, update_listing=update_listing, category=category, sort_methods=sort_methods)
 
 def get_category_content( cat ):
-    if cat == 'tvseries':
+    if cat  == 'tvseries':
         content = 'tvshows'
     elif cat == 'seasons':
-        content = 'tvshows'
+        content = 'seasons'
     elif cat == 'episodes':
         content = 'episodes'
     elif cat in ['movies', 'search']:
         content = 'movies'
     else:
         content = 'files'
-        
+
     return content
 
 def get_video_list(cat, u_params):
@@ -154,22 +161,22 @@ def make_video_list( video_list, params={}, dir_params = {} ):
 
     search = (cur_cat == 'search')
     usearch  = (params.get('usearch') == 'True')
-    
+
     use_filters  = not search and (cur_cat in ['movies', 'tvseries'])
     use_pages    = not usearch and total_pages
 
     if use_filters:
         filters = get_filters()
-        yield make_filter_item('sort', _('Sort'), params, dir_params, filters)
+        yield _make_filter_item('sort', params, dir_params, filters)
         if params.get('_sort') != 'updates':
-            yield make_filter_item('genre', _('Genre'), params, dir_params, filters)
-            yield make_filter_item('year', _('Year'), params, dir_params, filters)
-            yield make_filter_item('country', _('Country'), params, dir_params, filters)
-            yield make_filter_item('rating', _('Rating'), params, dir_params, filters)
- 
+            yield _make_filter_item('genre', params, dir_params, filters)
+            yield _make_filter_item('year', params, dir_params, filters)
+            yield _make_filter_item('country', params, dir_params, filters)
+            yield _make_filter_item('rating', params, dir_params, filters)
+
     if video_list['count']:
         for video_item in video_list['list']:
-            yield make_item(video_item, search)
+            yield _make_item(video_item, search)
 
     elif not usearch:
         item_info = {'label': make_colour_label('red', '[%s]' % _('Empty')),
@@ -196,11 +203,12 @@ def make_video_list( video_list, params={}, dir_params = {} ):
                          'url':   url}
             yield item_info
 
-def make_filter_item(filter, name, params, dir_params, filters):
+def _make_filter_item( filter, params, dir_params, filters ):
     cur_value = params.get('_%s' % filter,'')
 
+    filter_title = _get_filter_title(filter)
     url = plugin.get_url(action='select_filer', filter = filter, **dir_params)
-    label = make_category_label('yellowgreen', name, get_filter_name(filters[filter], cur_value))
+    label = make_category_label('yellowgreen', filter_title, get_filter_name(filters[filter], cur_value))
     list_item = {'label': label,
                  'is_folder':   False,
                  'is_playable': False,
@@ -210,84 +218,132 @@ def make_filter_item(filter, name, params, dir_params, filters):
 
     return list_item
 
-def make_item( video_item, search ):
-        item_info = video_item['item_info']
+def _get_filter_title( filter ):
+    result = ''
+    if filter == 'genre': result = _('Genre')
+    elif filter =='year': result = _('Year')
+    elif filter =='country': result = _('Country')
+    elif filter =='rating': result = _('Rating')
+    elif filter =='sort': result = _('Sort')
 
-        video_info = video_item['video_info']
-        video_type = video_info['type']
+    return result
 
+def _make_item( video_item, search ):
+        label_list = []
+
+        video_type = video_item['video_info']['type']
         use_atl_names = plugin.use_atl_names
-        movie_details = plugin.load_details
-        
+
+        if plugin.load_details \
+          and video_type in ['movies', 'tvseries','seasons']:
+            video_details = get_video_details(video_item['video_info'])
+            item_info = video_details['item_info']
+            video_info = video_details['video_info']
+        else:
+            item_info = video_item['item_info']
+            video_info = video_item['video_info']
+
+        if item_info.get('rating'):
+            rating_source = _get_rating_source()
+            for rating in item_info['rating']:
+                if rating['type'] == rating_source:
+                    rating['defaultt'] = True
+
         if video_type == 'movies':
             is_playable = True
             url = plugin.get_url(action='play', _type = video_type, _name_id = video_info['name_id'])
 
-            label_list = []
             if search:
                 label_list.append('[%s] ' % _('Movies').decode('utf-8'))
-            
+
             if use_atl_names:
                 title = item_info['info']['video']['originaltitle']
             else:
                 title = item_info['info']['video']['title']
-            if type(title) == int:
-                title = str(title)
+
             label_list.append(title)
-            # if item_info['info']['video']['year'] > 0:
-                # label_list.append(' (%d)' % item_info['info']['video']['year'])
 
-            if movie_details:
-                movie_details = get_movie_details(video_info)
-                item_info = movie_details['item_info']
-                if movie_details['video_info'].get('have_trailer'):
-                    trailer_url = plugin.get_url(action='trailer', _type = video_type, _name_id = video_info['name_id'])
-                    item_info['info']['video']['trailer'] = trailer_url
+            if use_atl_names \
+              and item_info['info']['video']['year'] > 0:
+                label_list.append(' (%d)' % item_info['info']['video']['year'])
 
-            item_info['label'] = ''.join(label_list)
-
-            del item_info['info']['video']['title']
+            if video_info.get('have_trailer'):
+                trailer_url = plugin.get_url(action='trailer', _type = video_type, _name_id = video_info['name_id'])
+                item_info['info']['video']['trailer'] = trailer_url
 
         elif video_type == 'tvseries':
             is_playable = False
             url = plugin.get_url(action='list_videos', cat = 'seasons', _name_id = video_info['name_id'])
 
-            if movie_details:
-                tvseries_details = get_tvseries_details(video_info)
-                item_info = tvseries_details['item_info']
-                if tvseries_details['video_info'].get('have_trailer'):
-                    trailer_url = plugin.get_url(action='trailer', _type = video_type, _name_id = video_info['name_id'])
-                    item_info['info']['video']['trailer'] = trailer_url
+            if video_info.get('have_trailer'):
+                trailer_url = plugin.get_url(action='trailer', _type = video_type, _name_id = video_info['name_id'])
+                item_info['info']['video']['trailer'] = trailer_url
 
             if search:
-                label_list = []
                 label_list.append('[%s] ' % _('TV Series').decode('utf-8'))
-                label_list.append(item_info['info']['video']['title'])
-                item_info['label'] = ''.join(label_list)
 
-                del item_info['info']['video']['title']
+            if use_atl_names:
+                title = item_info['info']['video']['originaltitle']
+            else:
+                title = item_info['info']['video']['title']
+            label_list.append(title)
+
+            if use_atl_names \
+              and item_info['info']['video']['year'] > 0:
+                label_list.append(' (%d)' % item_info['info']['video']['year'])
 
         elif video_type == 'seasons':
             is_playable = False
             url = plugin.get_url(action='list_videos', cat = 'episodes', _name_id = video_info['name_id'], _season = video_info['season'])
+
+            label_list.append('%s %d' % (_('Season').decode('utf-8'), video_info['season']))
 
         elif video_type == 'episodes':
             is_playable = True
             url = plugin.get_url(action='play', _type = 'episodes', _name_id = video_info['name_id'], _season = video_info['season'], _episode = video_info['episode'])
 
             if use_atl_names:
-                label_list = []
-                label_list.append(item_info['info']['video']['tvshowtitle'])
-                label_list.append('.s%02de%02d' % (item_info['info']['video']['season'], item_info['info']['video']['episode']))
-                item_info['label'] = ''.join(label_list)
+                label_list.append(video_info['originaltitle'])
+                label_list.append('.s%02de%02d' % (video_info['season'], video_info['episode']))
+                if item_info['info']['video']['title']:
+                    label_list.append('.%s' % (item_info['info']['video']['title']))
+            else:
+                if not item_info['info']['video']['title']:
+                    item_info['info']['video']['title'] = '%s %d' % (_('Episode').decode('utf-8'), video_info['episode'])
+                label_list.append(item_info['info']['video']['title'])
 
-                del item_info['info']['video']['title']
-            
+        item_info['label'] = ''.join(label_list)
         item_info['url'] = url
         item_info['is_playable'] = is_playable
 
+        del item_info['info']['video']['title']
+        
+        _backward_capatibility( item_info )
+
         return item_info
 
+def _backward_capatibility( item_info ):
+    major_version = xbmc.getInfoLabel('System.BuildVersion')[:2]
+    if major_version < '18':
+        for rating in item_info.get('rating'):
+            if rating['defaultt']:
+                item_info['info']['video']['rating'] = rating['rating']
+                item_info['info']['video']['votes'] = rating['votes']
+        for fields in ['genre', 'writer', 'director', 'country', 'credits']:
+            item_info['info']['video'][fields] = ' / '.join(item_info['info']['video'].get(fields,[]))
+
+    if major_version < '17':
+        cast = []
+        castandrole = []
+        for cast_ in item_info['cast']:
+            cast.append(cast_['name'])
+            castandrole.append((cast_['name'], cast_['role']))
+        item_info['info']['video']['cast'] = cast
+        item_info['info']['video']['castandrole'] = castandrole
+
+    if major_version < '15':
+        item_info['info']['video']['duration'] = (item_info['info']['video']['duration'] / 60)
+        
 def make_category_label( color, title, category ):
     label_parts = []
     label_parts.append('[COLOR=%s][B]' % color)
@@ -305,12 +361,11 @@ def make_colour_label( color, title ):
     return ''.join(label_parts)
 
 @plugin.cached(180)
-def get_movie_details( params ):
-    return _api.get_movie_details(params)
-
-@plugin.cached(180)
-def get_tvseries_details( params ):
-    return _api.get_tvseries_details(params)
+def get_video_details( params ):
+    if params['type'] == 'movies':
+        return _api.get_movie_details(params)
+    if params['type'] in ['seasons', 'tvseries']:
+        return _api.get_tvseries_details(params)
 
 @plugin.cached(180)
 def get_filters():
@@ -441,17 +496,18 @@ def trailer( params ):
 def select_filer( params ):
     filter = params['filter']
     filter_name = filter
+    filter_title = _get_filter_title(filter)
     filter_key = '_%s' % filter
-    
+
     list = get_filters()[filter]
     if filter != 'sort':
         list.insert(0, {'value': '', 'name': _('All')})
-        
+
     titles = []
     for list_item in list:
         titles.append(list_item['name'])
-        
-    ret = xbmcgui.Dialog().select(filter_name, titles)
+
+    ret = xbmcgui.Dialog().select(filter_title, titles)
     if ret >= 0:
         filter_value = list[ret]['value']
         if not filter_value and params.get(filter_key):
@@ -469,7 +525,7 @@ def select_filer( params ):
             remove_param(params, '_year')
             remove_param(params, '_country')
             remove_param(params, '_rating')
-        
+
         url = plugin.get_url(action='list_videos', update_listing=True, **params)
         xbmc.executebuiltin('Container.Update("%s")' % url)
 

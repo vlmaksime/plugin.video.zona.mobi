@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 # Module: apizonamobi
 # License: GPL v.3 https://www.gnu.org/copyleft/gpl.html
 
@@ -21,10 +21,7 @@ class zonamobi:
         self.__item = {}
 
         #Settings
-        self.__settings = {'episode_title': params.get('episode_title', 'Episode'),
-                           'season_title':  params.get('season_title','Season'),
-                           'video_quality': params.get('video_quality', 0),
-                           'rating_source': params.get('rating_source', 'imdb')}
+        self.video_quality = params.get('video_quality', 0)
 
         #Инициализация
         base_url = 'https://zona.mobi'
@@ -32,7 +29,7 @@ class zonamobi:
         self.__actions = {'main':            {'type': 'get', 'url': base_url},
                           'get_filters':     {'type': 'get', 'url': base_url + '/ajax/widget/filter'},
                           'get_video_url':   {'type': 'get', 'url': 'http://android.mzona.net/api/v1/video/#id'},
-                          'search':          {'type': 'get', 'url': 'https://zona.mobi/search//#keyword'},
+                          'search':          {'type': 'get', 'url': base_url + '/search//#keyword'},
                           #movies
                           'browse_movies':     {'type': 'get', 'url': base_url + '/movies/#filter'},
                           'browse_movies_updates': {'type': 'get', 'url': base_url + '/updates/movies'},
@@ -43,12 +40,6 @@ class zonamobi:
                           'get_tvseries_details': {'type': 'get', 'url': base_url + '/tvseries/#name_id'},                       
                           'browse_episodes': {'type': 'get', 'url': base_url + '/tvseries/#name_id/season-#season'}
                           }
-
-    def __get_setting( self, id, default='' ):
-        return self.__settings.get(id, default)
-
-    def __set_setting( self, id, value ):
-        self.__settings[id] = value
 
     def __http_request( self, action, params = {}, data={}, url='' ):
         action_settings = self.__actions.get(action)
@@ -112,11 +103,12 @@ class zonamobi:
         self.__items = self.__json.get('items', [])
             
         result = {'count': len(self.__items),
+                  'title': self.__json['title_h1'].strip(),
                   'total_pages': self.__json.get('pagination', {}).get('total_pages', 0),
                   'list':  self.__make_list('movies')}
         return result
 
-    def get_movie_details( self, params):
+    def get_movie_details( self, params ):
         url = self.__actions['get_movie_details'].get('url').replace('#name_id', params['name_id'])
 
         r = self.__http_request('get_movie_details', url = url)
@@ -148,11 +140,12 @@ class zonamobi:
         self.__items = self.__json.get('items', [])
 
         result = {'count': len(self.__items),
+                  'title': self.__json['title_h1'].strip(),
                   'total_pages': self.__json.get('pagination', {}).get('total_pages', 0),
                   'list':  self.__make_list('movies')}
         return result
 
-    def get_tvseries_details( self, params):
+    def get_tvseries_details( self, params ):
 
         if params.get('season'):
             url = self.__actions['browse_episodes'].get('url').replace('#name_id', params['name_id']).replace('#season', str(params['season']))
@@ -179,6 +172,7 @@ class zonamobi:
         
         result = {'count': len(self.__items),
                   'title': self.__item['name_rus'],
+                  'season': params['season'],
                   'list':  self.__make_list('episodes')}
         return result
 
@@ -286,6 +280,7 @@ class zonamobi:
         self.__items = self.__json.get('items', [])
 
         result = {'count': len(self.__items),
+                  'title': params['keyword'],
                   'total_pages': self.__json['pagination']['total_pages'],
                   'list':  self.__make_list('search')
                   }
@@ -346,7 +341,7 @@ class zonamobi:
         return item_info
 
     def __get_video_url( self, mobi_link_id ):
-        video_quality = self.__get_setting('video_quality')
+        video_quality = self.video_quality
 
         url = self.__actions['get_video_url'].get('url').replace('#id', str(mobi_link_id))
         r = self.__http_request('get_video_url', url = url)
@@ -370,16 +365,19 @@ class zonamobi:
 
                 title = item['name_rus']
                 title_orig = item.get('name_eng') if item.get('name_eng') else item['name_rus']
+
                 item_info = {'label':  title,
-                             'info': {'video': {'year':          item.get('year'),
-                                                'title':         title,
+                             'rating': self.__get_rating(item),
+                             'info': {'video': {'year': item.get('year'),
+                                                'title': title,
                                                 'originaltitle': title_orig,
-                                                'sorttitle':     title,
-                                                'mediatype ':    'tvshow' if item['serial'] else 'movie'
+                                                'sorttitle': title,
+                                                'tvshowtitle': title if item['serial'] else '',
+                                                'mediatype': 'tvshow' if item['serial'] else 'movie'
                                                 }
                                       },
-                             'art': {'poster': item['cover']
-                                     },
+                             'art': {'poster': item['cover']},
+                             'thumb': item['cover'],
                             }
 
                 video_info = {'item_info':  item_info,
@@ -389,8 +387,6 @@ class zonamobi:
                 yield video_info
 
         elif source == 'episodes':
-            season_title = self.__get_setting('season_title')
-            episode_title = self.__get_setting('episode_title')
 
             item = self.__item
             
@@ -398,215 +394,257 @@ class zonamobi:
             title_orig = item.get('name_eng') if item.get('name_eng') else item['name_rus']
 
             for episode in self.__items:
-                video_info = {'type':    source,
-                              'name_id': self.__item['name_id'],
-                              'season':  episode['season'],
+                video_info = {'type': source,
+                              'name_id': item['name_id'],
+                              'season': episode['season'],
                               'episode': episode['episode'],
+                              'originaltitle': self.__item.get('name_eng') if self.__item.get('name_eng') else self.__item['name_rus'],
                               }
-
-                if episode['title']:
-                    title_full = '%02d. %s' % (int(episode['episode']), episode['title'])
-                    title_orig_full = '%02d. %s' % (int(episode['episode']), episode['title'])
-                else:
-                    title_part = '%s %s %s %s' % (season_title, episode['season'], episode_title, episode['episode'])
-                    title_full = '%s. %s' % (title, title_part)
-                    title_orig_full = '%s. %s' % (title_orig, title_part)
-
-                if type(self.__json['images']) == list:
-                    thumb = ''
-                else:
-                    thumb = self.__json['images'].get(str(episode['mobi_link_id']),'')
-                    
-                item_info = {'label': title_full,
-                             'info':  { 'video': {'title':         title_full,
-                                                  'originaltitle': title_orig_full,
-                                                  'tvshowtitle':   title_orig,
-                                                  'sorttitle':     title_full,
-                                                  'season':        int(episode['season']),
-                                                  'episode':       int(episode['episode']),
-                                                  'mediatype ':    'episode'} },
-                             'art': {'poster': thumb,
-                                     },
-                             'fanart': self.__json['backdrops']['image_1280'],
-                             'thumb':  thumb}
-
-                video_info = {'item_info':  item_info,
-                              'video_info': video_info}
-                yield video_info
+                yield self.__get_details( video_info )
 
         elif source == 'seasons':
-            season_title = self.__get_setting('season_title')
             item = self.__item
             
-            title = item['name_rus']
-            title_orig = item.get('name_eng') if item.get('name_eng') else item['name_rus']
+            for season in xrange(1, self.__json['seasons']['count'] + 1):
+                video_info = {'type':    source,
+                              'name_id': item['name_id'],
+                              'season':  season}
 
-            for season in xrange(1, self.__json['seasons']['count']+1):
-                video_info = {'type':       source,
-                              'id':      self.__item['id'],
-                              'name_id': self.__item['name_id'],
-                              'season':     str(season)}
-
-                title_part = '%s %s' % (season_title, season)
-                title_full = '%s. %s' % (title_part, title)
-                title_orig_full = '%s. %s' % (title_part, title_orig)
-                item_info = {'label':  title_full,
-                             'info':  {'video': {'title':         title_full,
-                                                 'originaltitle': title_orig_full,
-                                                 'tvshowtitle':   title,
-                                                 'sorttitle':     title,
-                                                 'season':        int(season),
-                                                 'plot':          item['description'],
-                                                 'mediatype ':    'season'
-                                                 }
-                                       },
-                              'art': {'poster': item['image']
-                                      },
-                             'fanart': self.__json['backdrops']['image_1280'],
-                             'thumb':  self.__json['backdrops']['image_1280']
-                             }
-
-                video_info = {'item_info':  item_info,
-                              'video_info': video_info}
-                yield video_info
+                yield self.__get_details( video_info )
     
-    def __get_episode( self, episode_num ):
-        for episode in self.__make_eposode_list():
-            if episode['episode'] == int(episode_num):
-                return episode
-                
-    def __get_details( self, params = {} ):
-        rating_source = self.__get_setting('rating_source')
-        if rating_source:
-            rating_field = 'rating_' + rating_source
+    def __get_episode( self, episode, season ):
+        for episode_ in self.__make_eposode_list():
+            if episode_['episode'] == int(episode) \
+               and episode_['season'] == int(season):
+                return episode_
+        return {}
+
+    def __get_rating( self, item ):
+    
+        r_kinopoisk = self.__make_rating(item, 'kinopoisk')
+        r_imdb = self.__make_rating(item, 'imdb')
+        r_zona = self.__make_rating(item, 'zona')
+
+        return [r_imdb, r_kinopoisk, r_zona]
+
+    def __make_rating( self, item, type ):
+
+        keys = ['rating']
+        if type != 'zona':
+            keys.append(type)
+        rating_field = '_'.join(keys)
+        
+        keys.append('count')
+        votes_field = '_'.join(keys)
+        
+        rating = item.get(rating_field, '0')
+        if rating is not None:
+            rating = float(rating)
         else:
-            rating_field = 'rating'
+            rating = 0
+            
+        return {'type':	type,
+                'rating': rating,
+                'votes': item.get(votes_field, 0),
+                'defaultt': False,
+                }
+        
+    def __get_premiere_date( self ):
+        item = self.__item
+        
+        premiered = ''
+        
+        months = {u'января':   1,
+                  u'февраля':  2,
+                  u'марта':    3,
+                  u'апреля':   4,
+                  u'мая':      5,
+                  u'июня':     6,
+                  u'июля':     7,
+                  u'августа':  8,
+                  u'сентября': 9,
+                  u'октября': 10,
+                  u'ноября':  11,
+                  u'декабря': 12,
+                  }
+        
+        release_date_int = item.get('release_date_int', '')
+        release_date_rus = item.get('release_date_rus', '')
+        
+        if release_date_int:
+            release_date = release_date_int
+        else:
+            release_date = release_date_rus
+            
+        if release_date:
+            parts = release_date.split(' ')
+            premiered = '%s-%02d-%02d' % (parts[2], months[parts[1]], int(parts[0]))
+        
+        return premiered
+        
+    def __get_details( self, params = {} ):
 
         item = self.__item
 
-        title = item['name_rus']
-        title_orig = item.get('name_original') if item.get('name_original') else item['name_rus']
+        video_info = {}
+        video_info.update(params)
+        
+        #Defaults
+        poster = item['image']
+        thumb = item['image']
+        fanart = self.__json['backdrops']['image_1280']
+        plot = item.get('description')
+
+        premiered = self.__get_premiere_date()
+        mediatype = 'video'
+
+        aired = ''
+        mobi_link_id = ''
+        label = ''
+        title = ''
+        originaltitle = ''
+        tvshowtitle = ''
+        episode = None
+        season = None
+        rating = []
+        properties = {}
+        
+        #Titles
+        item_title = item['name_rus']
+        item_title_orig = item.get('name_original') if item.get('name_original') else item['name_rus']
+        if type(item_title) == int:
+            item_title = str(item_title)
+        if type(item_title_orig) == int:
+            item_title_orig = str(item_title_orig)
+
+        #Duration
         if item['runtime']:
             duration = item['runtime']['value'] * 60
         else:
             duration = 0
 
-        have_trailer = True if item.get('trailer_url') else False
-
-        video_info = {'have_trailer': have_trailer,
-                      'name_id':      item['name_id'],
-                      'mobi_link_id': item.get('mobi_link_id','')}
-
-        episode_num = params.get('episode')
-
+        #Genres
         genres = []
         for genre in self.__json['genres']:
             genres.append(genre['name'])
-        genre = ', '.join(genres)
-                
-        cast_names = []
-        cast_full = []
-        for actor in self.__json['persons'].get('actors', []):
-            cast_names.append(actor['name'])
-            cast_full.append({'name': actor['name'],
+        
+        
+        persons = self.__json.get('persons', {})
+
+        #Cast
+        cast = []
+        for actor in persons.get('actors', []):
+            cast.append({'name': actor['name'],
                          'thumbnail': actor['cover']})
 
+        #Director
         director = []
-        for dir in self.__json['persons'].get('director', []):
-            # director.append(dir['name'])
-            director = dir['name']
-            break
+        for director_ in persons.get('director', []):
+            director.append(director_['name'])
 
+        #Writer
         writer = []
-        for scenarist in self.__json['persons'].get('scenarist', []):
+        for scenarist in persons.get('scenarist', []):
             writer.append(scenarist['name'])
-        writer = ', '.join(writer)
-        
-        if episode_num:
-            season_title = self.__get_setting('season_title')
-            episode_title = self.__get_setting('episode_title')
 
-            
-            episode = self.__get_episode(episode_num)
-            if episode['title']:
-                title_full = '%02d. %s' % (int(episode['episode']), episode['title'])
-                title_orig_full = '%02d. %s' % (int(episode['episode']), episode['title'])
-            else:
-                title_part = '%s %s %s %s' % (season_title, episode['season'], episode_title, episode['episode'])
-                title_full = '%s. %s' % (title, title_part)
-                title_orig_full = '%s. %s' % (title_orig, title_part)
+        #Country
+        country = []
+        for country_ in self.__json.get('countries', []):
+            country.append(country_['name'])
 
-            release_date = episode['release_date']
-            if release_date:
-                date = ('%s.%s.%s') %(release_date[8:10],release_date[5:7],release_date[0:4])
-                premiered = release_date[0:10]
-            else:
-                date = ''
-                premiered = ''
-            
-            thumb = self.__json['images'].get(str(episode['mobi_link_id']),'')
-            item_info = {'label': title_full,
-                         'date': date, 
-                         'cast': cast_full,
-                         'info':  { 'video': {'title':         title_full,
-                                              'genre':         genre,
-                                              'originaltitle': title_orig_full,
-                                              'tvshowtitle':   title_orig,
-                                              'sorttitle':     title,
-                                              'director': director,
-                                              'writer': writer,
-                                              'cast': cast_names,
-                                              'season':        int(episode['season']),
-                                              'episode':       int(episode['episode']),
-                                              'premiered':     premiered,
-                                              'mediatype ':    'episode'} },
-                         'art': {'poster': thumb,
-                                 },
-                         'fanart': self.__json['backdrops']['image_1280'],
-                         'thumb':  thumb}
-            video_info['mobi_link_id'] = episode['mobi_link_id']
+        #Date
+        mobi_link_date = item['mobi_link_date']
+        if mobi_link_date:
+            date = ('%s.%s.%s') %(mobi_link_date[8:10], mobi_link_date[5:7], mobi_link_date[0:4])
         else:
-            title = item['name_rus']
-            title_orig = item.get('name_original') if item.get('name_original') else item['name_rus']
-
-            if item[rating_field]:
-                rating = float(item[rating_field])
-            else:
-                rating = 0
-
-            if item['serial']:
-                if item.get('episodes'):
-                    duration = duration * item['episodes']['count_all'] 
-                else:
-                    duration = 0
+            date = ''
+        
+        if item['serial']:
+            tvshowtitle = item_title
             
-            item_info = {'label':  title,
-                         'cast':     cast_full,
-                         'info': {'video': {'year':          item.get('year'),
-                                            'title':         title,
-                                            'originaltitle': title_orig,
-                                            'sorttitle':     title,
-                                            'rating':   rating,
-                                            'genre':         genre,
-                                            # 'cast':     cast_names,
-                                            'director': director,
-                                            'writer': writer,
-                                            # 'genre':    movie['genres'], #.split(', ') if movie['genres'] else [],
-                                            # 'cast':     movie['actors'].split(', ') if movie['actors'] else [],
-                                            'country':  item['country'], #.split(', ') if movie['country'] else [],
-                                            # 'director': movie['director'],
-                                            # 'writer':   movie['script'],
-                                            # 'tagline':  movie['slogan'],
-                                            'duration': duration,
-                                            'plot':     item['description'],
-                                            # 'mpaa':     self.__get_mpaa(movie['age_restriction'])
-                                            'mediatype ':    'tvshow' if item['serial'] else 'movie',
-                                            }
-                                  },
-                         'art': {'poster': item['image']
-                                 },
-                        }
+            p_episode = params.get('episode')
+            p_season = params.get('season')
 
-        video_info = {'item_info':  item_info,
-                      'video_info': video_info}
-        return video_info
+            season = self.__json['seasons']['count']
+            episode = self.__json['episodes']['count_all']
+            
+            if p_episode:
+                episode_ = self.__get_episode(p_episode, p_season)
+                mobi_link_id = episode_.get('mobi_link_id','')
+
+                mediatype = 'episode'
+                thumb = self.__json['images'].get(str(mobi_link_id))
+
+                release_date = episode_.get('release_date')
+                if release_date:
+                    aired = release_date[0:10]
+                    
+                title = episode_.get('title', '')
+                if type(title) == int:
+                    title = str(title)
+                originaltitle = title
+
+                episode = episode_['episode']
+                season = episode_['season']
+                
+                plot = ''
+                
+            elif p_season:
+                mediatype = 'season'
+                title = item_title
+                originaltitle = item_title_orig
+                duration = 0
+                episodes = self.__make_eposode_list()
+                if len(episodes):
+                    release_date = episodes[0]['release_date']
+                    if release_date:
+                        aired = release_date[0:10]
+            else:
+                mediatype = 'tvshow'
+                title = item_title
+                originaltitle = item_title_orig
+                rating = self.__get_rating(item)
+        else:
+            mediatype = 'movie'
+            title = item_title
+            originaltitle = item_title_orig
+            rating = self.__get_rating(item)
+            mobi_link_id = item.get('mobi_link_id','')
+            
+        item_info = {#'label':  label,
+                     'cast':   cast,
+                     'rating': rating,
+                     'properties': properties,
+                     'info': {'video': {'date': date, 
+                                        'genre': genres,
+                                        'country': country,
+                                        'year': item.get('year'),
+                                        'episode': episode,
+                                        'season': season,
+                                        'sortepisode': episode,
+                                        'sortseason': season,
+                                        'director': director,
+                                        'plot': plot,
+                                        'title': title,
+                                        'originaltitle': originaltitle,
+                                        'sorttitle': title,
+                                        'duration': duration,
+                                        'writer': writer,
+                                        'tvshowtitle': tvshowtitle,
+                                        'premiered': premiered,
+                                        'aired': aired,
+                                        'mediatype': mediatype,
+                                        }
+                              },
+                     'art': {'poster': poster},
+                     'fanart': fanart,
+                     'thumb':  thumb,
+                    }
+            
+        video_info.update({'have_trailer': True if item.get('trailer_url') else False,
+                           'name_id':      item['name_id'],
+                           'mobi_link_id': mobi_link_id})
+
+        return {'item_info':  item_info,
+                'video_info': video_info}
+        
