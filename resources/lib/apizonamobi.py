@@ -16,7 +16,6 @@ class zonamobi:
     def __init__( self, params = {} ):
 
         self.__items = []
-        self.__episodes = []
         self.__json = {}
         self.__item = {}
 
@@ -103,7 +102,7 @@ class zonamobi:
         self.__items = self.__json.get('items', [])
             
         result = {'count': len(self.__items),
-                  'title': self.__json['title_h1'].strip(),
+                  'title': self.__json['title_h1'].strip().encode('utf-8'),
                   'total_pages': self.__json.get('pagination', {}).get('total_pages', 0),
                   'list':  self.__make_list('movies')}
         return result
@@ -140,7 +139,7 @@ class zonamobi:
         self.__items = self.__json.get('items', [])
 
         result = {'count': len(self.__items),
-                  'title': self.__json['title_h1'].strip(),
+                  'title': self.__json['title_h1'].strip().encode('utf-8'),
                   'total_pages': self.__json.get('pagination', {}).get('total_pages', 0),
                   'list':  self.__make_list('movies')}
         return result
@@ -181,8 +180,9 @@ class zonamobi:
 
         items = self.__json['episodes']['items']
         if type(items) == dict:
+            episodes = range(0, len(items))
             for key, val in items.iteritems():
-                episodes.append(val)
+                episodes[int(key) - 1] = val
         elif type(items) == list:
             episodes = items
         
@@ -398,7 +398,7 @@ class zonamobi:
                               'name_id': item['name_id'],
                               'season': episode['season'],
                               'episode': episode['episode'],
-                              'originaltitle': self.__item.get('name_eng') if self.__item.get('name_eng') else self.__item['name_rus'],
+                              'originaltitle': item.get('name_original') if item.get('name_original') else item['name_rus'],
                               }
                 yield self.__get_details( video_info )
 
@@ -595,10 +595,11 @@ class zonamobi:
                 originaltitle = item_title_orig
                 duration = 0
                 episodes = self.__make_eposode_list()
-                if len(episodes):
-                    release_date = episodes[0]['release_date']
-                    if release_date:
-                        aired = release_date[0:10]
+                for episode_ in episodes:
+                    if episode_['episode'] == 1:
+                      if episode_['release_date']:
+                        aired = episode_['release_date'][0:10]
+                      break
             else:
                 mediatype = 'tvshow'
                 title = item_title
@@ -619,8 +620,6 @@ class zonamobi:
                                         'genre': genres,
                                         'country': country,
                                         'year': item.get('year'),
-                                        'episode': episode,
-                                        'season': season,
                                         'sortepisode': episode,
                                         'sortseason': season,
                                         'director': director,
@@ -630,7 +629,6 @@ class zonamobi:
                                         'sorttitle': title,
                                         'duration': duration,
                                         'writer': writer,
-                                        'tvshowtitle': tvshowtitle,
                                         'premiered': premiered,
                                         'aired': aired,
                                         'mediatype': mediatype,
@@ -640,7 +638,12 @@ class zonamobi:
                      'fanart': fanart,
                      'thumb':  thumb,
                     }
-            
+        if item['serial']:
+            item_info['info']['video'].update({'episode': episode,
+                                               'season': season,
+                                               'tvshowtitle': tvshowtitle,
+                                               })
+                                               
         video_info.update({'have_trailer': True if item.get('trailer_url') else False,
                            'name_id':      item['name_id'],
                            'mobi_link_id': mobi_link_id})

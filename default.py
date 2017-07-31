@@ -113,6 +113,9 @@ def list_videos( params ):
         listing = []
 
     if cur_cat == 'episodes':
+      if plugin.use_atl_names:
+        sort_methods=[1]
+      else:
         sort_methods=[24]
     elif cur_cat == 'seasons':
         sort_methods=[1]
@@ -267,6 +270,9 @@ def _make_item( video_item, search ):
               and item_info['info']['video']['year'] > 0:
                 label_list.append(' (%d)' % item_info['info']['video']['year'])
 
+            if use_atl_names:
+                del item_info['info']['video']['title']
+
             if video_info.get('have_trailer'):
                 trailer_url = plugin.get_url(action='trailer', _type = video_type, _name_id = video_info['name_id'])
                 item_info['info']['video']['trailer'] = trailer_url
@@ -312,11 +318,13 @@ def _make_item( video_item, search ):
                     item_info['info']['video']['title'] = '%s %d' % (_('Episode').decode('utf-8'), video_info['episode'])
                 label_list.append(item_info['info']['video']['title'])
 
+            if use_atl_names:
+                del item_info['info']['video']['title']
+
         item_info['label'] = ''.join(label_list)
+        plugin.log_error(item_info['label'])
         item_info['url'] = url
         item_info['is_playable'] = is_playable
-
-        del item_info['info']['video']['title']
         
         _backward_capatibility( item_info )
 
@@ -327,17 +335,20 @@ def _backward_capatibility( item_info ):
     if major_version < '18':
         for rating in item_info.get('rating'):
             if rating['defaultt']:
-                item_info['info']['video']['rating'] = rating['rating']
-                item_info['info']['video']['votes'] = rating['votes']
+                if rating['rating']:
+                    item_info['info']['video']['rating'] = rating['rating']
+                if rating['votes']:
+                    item_info['info']['video']['votes'] = rating['votes']
+                break
         for fields in ['genre', 'writer', 'director', 'country', 'credits']:
             item_info['info']['video'][fields] = ' / '.join(item_info['info']['video'].get(fields,[]))
 
     if major_version < '17':
         cast = []
         castandrole = []
-        for cast_ in item_info['cast']:
+        for cast_ in item_info.get('cast',[]):
             cast.append(cast_['name'])
-            castandrole.append((cast_['name'], cast_['role']))
+            castandrole.append((cast_['name'], cast_.get('role')))
         item_info['info']['video']['cast'] = cast
         item_info['info']['video']['castandrole'] = castandrole
 
@@ -413,24 +424,6 @@ def search( params ):
         params['cat'] = 'search'
         params['_keyword'] = keyword
         return list_videos(params)
-
-@plugin.action()
-def search_category( params ):
-
-    category = params.get('cat')
-    keyword = params.get('_keyword', '')
-
-    kbd = xbmc.Keyboard()
-    kbd.setDefault(keyword)
-    kbd.setHeading(_('Search'))
-    kbd.doModal()
-    if kbd.isConfirmed():
-        keyword = kbd.getText()
-
-    params['_keyword'] = keyword
-    del params['action']
-    url = plugin.get_url(action='list_videos', update_listing=True, **params)
-    xbmc.executebuiltin('Container.Update("%s")' % url)
 
 @plugin.action()
 def search_history():
