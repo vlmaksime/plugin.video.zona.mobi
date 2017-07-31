@@ -112,19 +112,22 @@ def list_videos( params ):
     else:
         listing = []
 
-    if cur_cat == 'episodes':
+    sort_methods = _get_sort_methods(cur_cat)
+
+    return plugin.create_listing(listing, content=content, succeeded=succeeded, update_listing=update_listing, category=category, sort_methods=sort_methods)
+
+def _get_sort_methods( cat ):
+    major_version = xbmc.getInfoLabel('System.BuildVersion')[:2]
+    if cat == 'episodes' \
+      and major_version >= '16':
       if plugin.use_atl_names:
         sort_methods=[1]
       else:
         sort_methods=[24]
-    elif cur_cat == 'seasons':
+    elif cat == 'seasons':
         sort_methods=[1]
-    # elif cur_cat == 'tvseries':
-        # sort_methods=[0, 1, 24, 36, 21, 18]
     else:
         sort_methods=[0]
-
-    return plugin.create_listing(listing, content=content, succeeded=succeeded, update_listing=update_listing, category=category, sort_methods=sort_methods)
 
 def get_category_content( cat ):
     if cat  == 'tvseries':
@@ -270,7 +273,7 @@ def _make_item( video_item, search ):
               and item_info['info']['video']['year'] > 0:
                 label_list.append(' (%d)' % item_info['info']['video']['year'])
 
-            if use_atl_names:
+            if use_atl_names or search:
                 del item_info['info']['video']['title']
 
             if video_info.get('have_trailer'):
@@ -322,7 +325,6 @@ def _make_item( video_item, search ):
                 del item_info['info']['video']['title']
 
         item_info['label'] = ''.join(label_list)
-        plugin.log_error(item_info['label'])
         item_info['url'] = url
         item_info['is_playable'] = is_playable
         

@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="UTF-8"?>
-<addon id="plugin.video.zona.mobi" version="0.1.2" name="ZONA.mobi" provider-name="vl.maksime">
+<addon id="plugin.video.zona.mobi" version="0.1.3" name="ZONA.mobi" provider-name="vl.maksime">
     <requires>
         <import addon="xbmc.python" version="2.1.0"/>
         <import addon="script.module.requests" version="2.12.4"/>
@@ -9,8 +9,8 @@
         <provides>video</provides>
     </extension>
     <extension point="xbmc.addon.metadata">
-        <summary lang="en"></summary>
-        <summary lang="ru"></summary>
+        <summary lang="en">Movies and TV Shows online</summary>
+        <summary lang="ru">Фильмы и Сериалы онлайн</summary>
         <description lang="en"></description>
         <description lang="ru"></description>
         <disclaimer lang="en"></disclaimer>
@@ -22,7 +22,7 @@
         <website>https://zona.mobi/</website>
         <email>vl.maksime@gmail.com</email>
         <source>https://github.com/vlmaksime/plugin.video.zona.mobi</source>
-        <news>v0.1.2 (2017-07-27)[CR]- Исправлено отображение параметров[CR]- В разделы "Фильмы" и "Сериалы" добавил фильтры</news>
+        <news>v0.1.3 (2017-07-31)[CR]- Улучшен алгоритм получения данных о контенте[CR]- Дополнение адаптировано для работы с KODI 18[CR]- Добавлена обратная совместимость до версии KODI 14.2</news>
         <assets>
             <icon>icon.png</icon>
             <screenshot>resources\media\screenshot-01.jpg</screenshot>

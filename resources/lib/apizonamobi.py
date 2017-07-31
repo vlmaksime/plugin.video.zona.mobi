@@ -568,7 +568,7 @@ class zonamobi:
             season = self.__json['seasons']['count']
             episode = self.__json['episodes']['count_all']
             
-            if p_episode:
+            if p_episode is not None:
                 episode_ = self.__get_episode(p_episode, p_season)
                 mobi_link_id = episode_.get('mobi_link_id','')
 
@@ -589,7 +589,7 @@ class zonamobi:
                 
                 plot = ''
                 
-            elif p_season:
+            elif p_season is not None:
                 mediatype = 'season'
                 title = item_title
                 originaltitle = item_title_orig
@@ -600,11 +600,15 @@ class zonamobi:
                       if episode_['release_date']:
                         aired = episode_['release_date'][0:10]
                       break
+                properties['TotalSeasons'] = str(len(episodes))
             else:
                 mediatype = 'tvshow'
                 title = item_title
                 originaltitle = item_title_orig
                 rating = self.__get_rating(item)
+
+                properties['TotalSeasons'] = str(season)
+                properties['TotalEpisodes'] = str(episode)
         else:
             mediatype = 'movie'
             title = item_title
