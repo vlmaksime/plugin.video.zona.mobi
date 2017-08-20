@@ -5,7 +5,7 @@
     <setting type="sep"/>
     <setting label="30210" type="enum" id="video_quality" lvalues="30211|30212" default="0"/>
     <setting label="30203" type="bool" id="load_details" default="true"/>
-    <setting label="30220" type="enum" id="movie_rating" lvalues="30221|30222|30223" default="0" />
+    <setting label="30220" type="enum" id="video_rating" lvalues="30221|30222|30223" default="0" />
     <setting type="bool" id="united_search" visible="false" default="true" />
     <setting type="text" id="us_command" visible="false" default="action=search&keyword=" />
 </settings>

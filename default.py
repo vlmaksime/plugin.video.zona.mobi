@@ -13,7 +13,7 @@ import resources.lib.apizonamobi as apizonamobi
 plugin = Plugin()
 _ = plugin.initialize_gettext()
 
-def init_api():
+def _init_api():
     settings_list = ['video_quality']
 
     settings = {}
@@ -23,13 +23,13 @@ def init_api():
     return apizonamobi.zonamobi(settings)
 
 def _get_rating_source():
-    rating_source = plugin.movie_rating
+    rating_source = plugin.video_rating
     if rating_source == 0: source = 'zona'
     elif rating_source == 1: source = 'imdb'
     elif rating_source == 2: source = 'kinopoisk'
     return source
 
-def show_api_error(err):
+def _show_api_error(err):
     text = ''
     if err.code == 1:
         text = _('Connection error')
@@ -37,40 +37,49 @@ def show_api_error(err):
         text = str(err)
     xbmcgui.Dialog().notification(plugin.addon.getAddonInfo('name'), text, xbmcgui.NOTIFICATION_ERROR)
 
-def show_notification(text):
+def _show_notification(text):
     xbmcgui.Dialog().notification(plugin.addon.getAddonInfo('name'), text)
 
-def get_request_params( params ):
+def _get_request_params( params ):
     result = {}
     for param in params:
         if param[0] == '_':
             result[param[1:]] = params[param]
     return result
 
+def _remove_param(params, name):
+    if params.get(name):
+        del params[name]
+    
 @plugin.action()
 def root( params ):
     return plugin.create_listing(_list_root(), content='files')
 
 def _list_root():
-    items = [{'action': 'list_videos',    'label': _('Movies'),    'params': {'cat': 'movies'}},
-             {'action': 'list_videos',    'label': _('TV Series'), 'params': {'cat': 'tvseries'}},
-             {'action': 'search_history', 'label': _('Search')}]
+    items = [{'action': 'list_videos', 'label': _('Movies'), 'icon': _get_image('DefaultMovies.png'), 'params': {'cat': 'movies'}},
+             {'action': 'list_videos', 'label': _('TV Series'), 'icon': _get_image('DefaultTVShows.png'), 'params': {'cat': 'tvseries'}},
+             {'action': 'search_history', 'label': _('Search'), 'icon': _get_image('DefaultAddonsSearch.png')}]
 
     for item in items:
         params = item.get('params',{})
         url = plugin.get_url(action=item['action'], **params)
 
-        list_item = {'label':  item['label'],
-                     'url':    url,
-                     'icon':   plugin.icon,
+        item_icon = item.get('icon')
+        if not item_icon:
+            item_icon = plugin.icon
+        
+        list_item = {'label': item['label'],
+                     'url': url,
+                     'icon': item_icon,
                      'fanart': plugin.fanart}
         yield list_item
 
+#list_videos
 @plugin.action()
 def list_videos( params ):
     cur_cat  = params['cat']
     cur_page = int(params.get('_page', '1'))
-    content  = get_category_content(cur_cat)
+    content  = _get_category_content(cur_cat)
 
     update_listing = (params.get('update_listing')=='True')
     if update_listing:
@@ -85,11 +94,12 @@ def list_videos( params ):
         del dir_params['_page']
 
     try:
-        video_list = get_video_list(cur_cat, get_request_params(params))
+        video_list = _get_video_list(cur_cat, _get_request_params(params))
         succeeded = True
     except apizonamobi.ZonaMobiApiError as err:
-        show_api_error(err)
+        _show_api_error(err)
         succeeded = False
+        return
 
     category_title = []
     if cur_cat in ['movies', 'tvseries', 'search']:
@@ -108,13 +118,27 @@ def list_videos( params ):
         return
 
     if succeeded:
-        listing = make_video_list(video_list, params, dir_params)
+        listing = _make_video_list(video_list, params, dir_params)
     else:
         listing = []
 
     sort_methods = _get_sort_methods(cur_cat)
 
     return plugin.create_listing(listing, content=content, succeeded=succeeded, update_listing=update_listing, category=category, sort_methods=sort_methods)
+
+def _get_category_content( cat ):
+    if cat  == 'tvseries':
+        content = 'tvshows'
+    elif cat == 'seasons':
+        content = 'seasons'
+    elif cat == 'episodes':
+        content = 'episodes'
+    elif cat in ['movies', 'search']:
+        content = 'movies'
+    else:
+        content = 'files'
+
+    return content
 
 def _get_sort_methods( cat ):
     major_version = xbmc.getInfoLabel('System.BuildVersion')[:2]
@@ -129,35 +153,14 @@ def _get_sort_methods( cat ):
     else:
         sort_methods=[0]
 
-def get_category_content( cat ):
-    if cat  == 'tvseries':
-        content = 'tvshows'
-    elif cat == 'seasons':
-        content = 'seasons'
-    elif cat == 'episodes':
-        content = 'episodes'
-    elif cat in ['movies', 'search']:
-        content = 'movies'
-    else:
-        content = 'files'
+    return sort_methods
 
-    return content
-
-def get_video_list(cat, u_params):
-    if cat == 'movies':
-        video_list = _api.browse_movies(u_params)
-    elif cat == 'tvseries':
-        video_list = _api.browse_tvseries(u_params)
-    elif cat == 'seasons':
-        video_list = _api.browse_seasons(u_params)
-    elif cat == 'episodes':
-        video_list = _api.browse_episodes(u_params)
-    elif cat == 'search':
-        video_list = _api.search(u_params)
+def _get_video_list( cat, params ):
+    video_list = _api.get_video_list(cat, params)
 
     return video_list
 
-def make_video_list( video_list, params={}, dir_params = {} ):
+def _make_video_list( video_list, params={}, dir_params = {} ):
     cur_cat  = params.get('cat', '')
     keyword  = params.get('_keyword', '')
     cur_page = int(params.get('_page', '1'))
@@ -185,10 +188,10 @@ def make_video_list( video_list, params={}, dir_params = {} ):
             yield _make_item(video_item, search)
 
     elif not usearch:
-        item_info = {'label': make_colour_label('red', '[%s]' % _('Empty')),
-                     'is_folder':   False,
+        item_info = {'label': _make_colour_label('red', '[%s]' % _('Empty')),
+                     'is_folder': False,
                      'is_playable': False,
-                     'url':   ''}
+                     'url': ''}
         yield item_info
 
     if use_pages:
@@ -214,12 +217,12 @@ def _make_filter_item( filter, params, dir_params, filters ):
 
     filter_title = _get_filter_title(filter)
     url = plugin.get_url(action='select_filer', filter = filter, **dir_params)
-    label = make_category_label('yellowgreen', filter_title, get_filter_name(filters[filter], cur_value))
+    label = _make_category_label('yellowgreen', filter_title, _get_filter_name(filters[filter], cur_value))
     list_item = {'label': label,
                  'is_folder':   False,
                  'is_playable': False,
-                 'url':    url,
-                 'icon':   plugin.icon,
+                 'url': url,
+                 'icon': _get_filter_icon(filter),
                  'fanart': plugin.fanart}
 
     return list_item
@@ -233,6 +236,19 @@ def _get_filter_title( filter ):
     elif filter =='sort': result = _('Sort')
 
     return result
+
+def _get_filter_icon( filter ):
+    image = ''
+    if filter == 'genre': image = _get_image('DefaultGenre.png')
+    elif filter =='year': image = _get_image('DefaultYear.png')
+    elif filter =='country': image = _get_image('DefaultCountry.png')
+    elif filter =='rating': image = _get_image('DefaultTags.png')
+    elif filter =='sort': image = _get_image('DefaultMovieTitle.png')
+
+    if not image:
+        image = plugin.icon
+        
+    return image
 
 def _make_item( video_item, search ):
         label_list = []
@@ -249,9 +265,9 @@ def _make_item( video_item, search ):
             item_info = video_item['item_info']
             video_info = video_item['video_info']
 
-        if item_info.get('rating'):
+        if item_info.get('ratings'):
             rating_source = _get_rating_source()
-            for rating in item_info['rating']:
+            for rating in item_info['ratings']:
                 if rating['type'] == rating_source:
                     rating['defaultt'] = True
 
@@ -328,36 +344,37 @@ def _make_item( video_item, search ):
         item_info['url'] = url
         item_info['is_playable'] = is_playable
         
-        _backward_capatibility( item_info )
+        _backward_capatibility(item_info)
 
         return item_info
 
 def _backward_capatibility( item_info ):
     major_version = xbmc.getInfoLabel('System.BuildVersion')[:2]
+
+    for rating in item_info.get('ratings', []):
+        if rating['defaultt']:
+            if rating['rating']:
+                item_info['info']['video']['rating'] = rating['rating']
+            if rating['votes']:
+                item_info['info']['video']['votes'] = rating['votes']
+            break
+
+    cast = []
+    castandrole = []
+    for cast_ in item_info.get('cast',[]):
+        cast.append(cast_['name'])
+        castandrole.append((cast_['name'], cast_.get('role')))
+    item_info['info']['video']['cast'] = cast
+    item_info['info']['video']['castandrole'] = castandrole
+
     if major_version < '18':
-        for rating in item_info.get('rating'):
-            if rating['defaultt']:
-                if rating['rating']:
-                    item_info['info']['video']['rating'] = rating['rating']
-                if rating['votes']:
-                    item_info['info']['video']['votes'] = rating['votes']
-                break
         for fields in ['genre', 'writer', 'director', 'country', 'credits']:
             item_info['info']['video'][fields] = ' / '.join(item_info['info']['video'].get(fields,[]))
-
-    if major_version < '17':
-        cast = []
-        castandrole = []
-        for cast_ in item_info.get('cast',[]):
-            cast.append(cast_['name'])
-            castandrole.append((cast_['name'], cast_.get('role')))
-        item_info['info']['video']['cast'] = cast
-        item_info['info']['video']['castandrole'] = castandrole
 
     if major_version < '15':
         item_info['info']['video']['duration'] = (item_info['info']['video']['duration'] / 60)
         
-def make_category_label( color, title, category ):
+def _make_category_label( color, title, category ):
     label_parts = []
     label_parts.append('[COLOR=%s][B]' % color)
     label_parts.append(title)
@@ -366,25 +383,25 @@ def make_category_label( color, title, category ):
     label_parts.append('[/COLOR]')
     return ''.join(label_parts)
 
-def make_colour_label( color, title ):
+def _make_colour_label( color, title ):
     label_parts = []
     label_parts.append('[COLOR=%s][B]' % color)
     label_parts.append(title)
     label_parts.append('[/B][/COLOR]')
     return ''.join(label_parts)
 
+def _get_image( image ):
+    return image if xbmc.skinHasImage(image) else plugin.icon
+    
 @plugin.cached(180)
 def get_video_details( params ):
-    if params['type'] == 'movies':
-        return _api.get_movie_details(params)
-    if params['type'] in ['seasons', 'tvseries']:
-        return _api.get_tvseries_details(params)
+    return _api.get_content_details(params)
 
 @plugin.cached(180)
 def get_filters():
     return _api.get_filters()
 
-def get_filter_name( list, value ):
+def _get_filter_name( list, value ):
     for item in list:
         if item['value'] == value:
             return item['name'].encode('utf-8')
@@ -439,53 +456,17 @@ def search_history():
 
     listing = []
     listing.append({'label': _('New Search...'),
-                    'url': plugin.get_url(action='search')})
+                    'url': plugin.get_url(action='search'),
+                    'icon': _get_image('DefaultAddonsSearch.png'),
+                    'fanart': plugin.fanart})
 
     for item in history:
         listing.append({'label': item['keyword'],
-                        'url': plugin.get_url(action='search', keyword=item['keyword'].encode('utf-8'))})
+                        'url': plugin.get_url(action='search', keyword=item['keyword'].encode('utf-8')),
+                        'icon': plugin.icon,
+                        'fanart': plugin.fanart})
 
-    return plugin.create_listing(listing, content='movies')
-
-@plugin.action()
-def play( params ):
-
-    u_params = get_request_params( params )
-    try:
-        if u_params['type'] == 'movies':
-            item = _api.get_movie_url( u_params )
-            succeeded = True
-        elif u_params['type'] == 'episodes':
-            item = _api.get_episode_url( u_params )
-            succeeded = True
-        else:
-            succeeded = False
-    except apizonamobi.ZonaMobiApiError as err:
-        show_api_error(err)
-        item = None
-        succeeded = False
-
-    return plugin.resolve_url(play_item=item, succeeded=succeeded)
-
-@plugin.action()
-def trailer( params ):
-
-    u_params = get_request_params( params )
-    try:
-        if u_params['type'] == 'movies':
-            item = _api.get_movie_trailer( u_params )
-            succeeded = True
-        elif u_params['type'] == 'tvseries':
-            item = _api.get_tvseries_trailer( u_params )
-            succeeded = True
-        else:
-            succeeded = False
-    except apizonamobi.ZonaMobiApiError as err:
-        show_api_error(err)
-        item = None
-        succeeded = False
-
-    return plugin.resolve_url(play_item=item, succeeded=succeeded)
+    return plugin.create_listing(listing, content='files')
 
 @plugin.action()
 def select_filer( params ):
@@ -513,21 +494,45 @@ def select_filer( params ):
         del params['action']
         del params['filter']
 
-        remove_param(params, '_page')
+        _remove_param(params, '_page')
 
         if filter_name == 'sort' and filter_value == 'updates':
-            remove_param(params, '_genre')
-            remove_param(params, '_year')
-            remove_param(params, '_country')
-            remove_param(params, '_rating')
+            _remove_param(params, '_genre')
+            _remove_param(params, '_year')
+            _remove_param(params, '_country')
+            _remove_param(params, '_rating')
 
         url = plugin.get_url(action='list_videos', update_listing=True, **params)
         xbmc.executebuiltin('Container.Update("%s")' % url)
 
-def remove_param(params, name):
-    if params.get(name):
-        del params[name]
+@plugin.action()
+def play( params ):
+
+    u_params = _get_request_params( params )
+    try:
+        item = _api.get_content_url( u_params )
+        succeeded = True
+    except apizonamobi.ZonaMobiApiError as err:
+        _show_api_error(err)
+        item = None
+        succeeded = False
+
+    return plugin.resolve_url(play_item=item, succeeded=succeeded)
+
+@plugin.action()
+def trailer( params ):
+
+    u_params = _get_request_params( params )
+    try:
+        item = _api.get_trailer_url( u_params )
+        succeeded = True
+    except apizonamobi.ZonaMobiApiError as err:
+        _show_api_error(err)
+        item = None
+        succeeded = False
+
+    return plugin.resolve_url(play_item=item, succeeded=succeeded)
 
 if __name__ == '__main__':
-    _api = init_api()
+    _api = _init_api()
     plugin.run()
