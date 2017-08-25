@@ -4,6 +4,7 @@
 
 import xbmc
 import xbmcgui
+import xbmcplugin
 
 from simpleplugin import Plugin
 
@@ -141,17 +142,16 @@ def _get_category_content( cat ):
     return content
 
 def _get_sort_methods( cat ):
-    major_version = xbmc.getInfoLabel('System.BuildVersion')[:2]
+    sort_methods = []
+
     if cat == 'episodes' \
-      and major_version >= '16':
-      if plugin.use_atl_names:
-        sort_methods=[1]
-      else:
-        sort_methods=[24]
-    elif cat == 'seasons':
-        sort_methods=[1]
+      and not plugin.use_atl_names:
+        sort_methods.append(xbmcplugin.SORT_METHOD_EPISODE)
+    elif cat == 'search':
+        sort_methods.append(xbmcplugin.SORT_METHOD_VIDEO_YEAR)
+        sort_methods.append(xbmcplugin.SORT_METHOD_TITLE_IGNORE_THE)
     else:
-        sort_methods=[0]
+        sort_methods.append(xbmcplugin.SORT_METHOD_NONE)
 
     return sort_methods
 
@@ -242,7 +242,7 @@ def _get_filter_icon( filter ):
     if filter == 'genre': image = _get_image('DefaultGenre.png')
     elif filter =='year': image = _get_image('DefaultYear.png')
     elif filter =='country': image = _get_image('DefaultCountry.png')
-    elif filter =='rating': image = _get_image('DefaultTags.png')
+    elif filter =='rating': image = _get_image('DefaultFavourites.png')
     elif filter =='sort': image = _get_image('DefaultMovieTitle.png')
 
     if not image:
@@ -512,6 +512,9 @@ def play( params ):
     try:
         item = _api.get_content_url( u_params )
         succeeded = True
+        if u_params['type'] == 'episodes' \
+           and not item['info']['video']['title']:
+            item['info']['video']['title'] = '%s %d' % (_('Episode').decode('utf-8'), item['info']['video']['episode'])
     except apizonamobi.ZonaMobiApiError as err:
         _show_api_error(err)
         item = None

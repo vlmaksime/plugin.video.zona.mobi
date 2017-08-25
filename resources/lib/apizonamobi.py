@@ -11,6 +11,9 @@ class ZonaMobiApiError(Exception):
          self.value = value
          self.code = code
 
+def sort_by_episode(item):
+    return item.get('episode_key', '')
+
 class zonamobi:
 
     def __init__( self, params = {} ):
@@ -27,7 +30,7 @@ class zonamobi:
 
         self._actions = {'main':            {'type': 'get', 'url': base_url},
                           'get_filters':     {'type': 'get', 'url': base_url + '/ajax/widget/filter'},
-                          'get_video_url':   {'type': 'get', 'url': 'http://android.mzona.net/api/v1/video/#mobi_link_id'},
+                          'get_video_url':   {'type': 'get', 'url': base_url + '/api/v1/video/#mobi_link_id'},
                           'search':          {'type': 'get', 'url': base_url + '/search//#keyword'},
                           #content
                           'browse_content':     {'type': 'get', 'url': base_url + '/#content/#filter'},
@@ -140,7 +143,7 @@ class zonamobi:
     def browse_episodes( self, params ):
 
         url_params = {'#name_id': params['name_id'],
-                      '#season': params['season']}
+                      '#season': str(params['season'])}
 
         r = self._http_request('browse_episodes', url_params=url_params)
         self._json = r.json()
@@ -159,11 +162,12 @@ class zonamobi:
 
         items = self._json['episodes']['items']
         if type(items) == dict:
-            episodes = range(0, len(items))
             for key, val in items.iteritems():
-                episodes[int(key) - 1] = val
+                episodes.append(val)
         elif type(items) == list:
             episodes = items
+
+        episodes.sort(key=sort_by_episode)
         
         return episodes
     
@@ -460,7 +464,7 @@ class zonamobi:
         tvshowtitle = ''
         episode = None
         season = None
-        rating = []
+        ratings = []
         properties = {}
         
         #Titles
@@ -541,6 +545,9 @@ class zonamobi:
                 episode = episode_['episode']
                 season = episode_['season']
                 
+                if episode == 0:
+                    episode = season
+                    season = 0
                 # plot = ''
                 
             elif p_season is not None:
