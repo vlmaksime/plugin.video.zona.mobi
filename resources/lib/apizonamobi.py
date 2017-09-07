@@ -265,6 +265,7 @@ class zonamobi:
 
         result = {'count': len(self._items),
                   'title': params['keyword'],
+                  'is_second': self._json['is_second'],
                   'total_pages': self._json['pagination']['total_pages'],
                   'list':  self._make_list('search')
                   }

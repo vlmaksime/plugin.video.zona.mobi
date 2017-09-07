@@ -148,6 +148,7 @@ def _get_sort_methods( cat ):
       and not plugin.use_atl_names:
         sort_methods.append(xbmcplugin.SORT_METHOD_EPISODE)
     elif cat == 'search':
+        sort_methods.append(xbmcplugin.SORT_METHOD_NONE)
         sort_methods.append(xbmcplugin.SORT_METHOD_VIDEO_YEAR)
         sort_methods.append(xbmcplugin.SORT_METHOD_TITLE_IGNORE_THE)
     else:
@@ -171,6 +172,11 @@ def _make_video_list( video_list, params={}, dir_params = {} ):
     search = (cur_cat == 'search')
     usearch  = (params.get('usearch') == 'True')
 
+    if search \
+       and usearch \
+       and video_list.get('is_second', False):
+        video_list['list'] = []
+        
     use_filters  = not search and (cur_cat in ['movies', 'tvseries'])
     use_pages    = not usearch and total_pages
 
@@ -321,7 +327,11 @@ def _make_item( video_item, search ):
             is_playable = False
             url = plugin.get_url(action='list_videos', cat = 'episodes', _name_id = video_info['name_id'], _season = video_info['season'])
 
-            label_list.append('%s %d' % (_('Season').decode('utf-8'), video_info['season']))
+            if use_atl_names:
+                title = 'Season %d' % (video_info['season'])
+            else:
+                title = '%s %d' % (_('Season').decode('utf-8'), video_info['season'])
+            label_list.append(title)
 
         elif video_type == 'episodes':
             is_playable = True
