@@ -7,9 +7,8 @@ import urllib
 import re
 
 class ZonaMobiApiError(Exception):
-    def _init_(self, value, code):
-         self.value = value
-         self.code = code
+    """Custom exception"""
+    pass
 
 def sort_by_episode(item):
     return item.get('episode_key', '')
@@ -18,27 +17,23 @@ class zonamobi:
 
     def __init__( self, params = {} ):
 
-        self._items = []
-        self._json = {}
-        self._item = {}
-
         #Settings
         self.video_quality = params.get('video_quality', 0)
 
         #Инициализация
-        base_url = 'https://zona.mobi'
+        base_url = 'https://zona.video'
 
-        self._actions = {'main':            {'type': 'get', 'url': base_url},
-                          'get_filters':     {'type': 'get', 'url': base_url + '/ajax/widget/filter'},
-                          'get_video_url':   {'type': 'get', 'url': base_url + '/api/v1/video/#mobi_link_id'},
-                          'search':          {'type': 'get', 'url': base_url + '/search//#keyword'},
-                          #content
-                          'browse_content':     {'type': 'get', 'url': base_url + '/#content/#filter'},
-                          'browse_content_updates': {'type': 'get', 'url': base_url + '/updates/#content'},
-                          'get_content_details': {'type': 'get', 'url': base_url + '/#content/#name_id'},                       
-                          #tvseries
-                          'browse_episodes': {'type': 'get', 'url': base_url + '/tvseries/#name_id/season-#season'}
-                          }
+        self._actions = {'main': {'url': base_url},
+                         'get_filters': {'url': base_url + '/ajax/widget/filter'},
+                         'get_video_url': {'url': base_url + '/api/v1/video/#mobi_link_id'},
+                         'search': {'url': base_url + '/search//#keyword'},
+                         #content
+                         'browse_content': {'url': base_url + '/#content/#filter'},
+                         'browse_content_updates': {'url': base_url + '/updates/#content'},
+                         'get_content_details': {'url': base_url + '/#content/#name_id'},                       
+                         #tvseries
+                         'browse_episodes': {'url': base_url + '/tvseries/#name_id/season-#season'}
+                         }
 
     def _http_request( self, action, params = {}, data={}, url='', url_params={} ):
         action_settings = self._actions.get(action)
@@ -59,16 +54,13 @@ class zonamobi:
 	
         request_type = action_settings.get('type', 'post')
         try:
-            if request_type == 'post':
-                r = requests.post(url, data=data, params=params, headers=headers, cookies=cookies)
-            elif request_type == 'get':
-                r = requests.get(url, data=data, params=params, headers=headers, cookies=cookies)
-            else:
-                raise ZonaMobiApiError('Wrong request_type %s' % (request_type), 1)
+            r = requests.get(url, data=data, params=params, headers=headers, cookies=cookies)
 
             r.raise_for_status()
         except requests.ConnectionError as err:
-            raise ZonaMobiApiError('Connection error', 1)
+            raise ZonaMobiApiError('Connection error')
+        except requests.exceptions.HTTPError as err:
+            raise ZonaMobiApiError(err)
         return r
 
     def _get_filter( self, params ):
@@ -83,21 +75,21 @@ class zonamobi:
             filters.insert(0, 'filter')
         return '/'.join(filters)
 
-    def get_video_list( self, type, params ):
-        if type in ['movies', 'tvseries']:
-            video_list = self._browse_content(type, params)
-        elif type == 'seasons':
+    def get_video_list( self, content_type, params ):
+        if content_type in ['movies', 'tvseries']:
+            video_list = self._browse_content(content_type, params)
+        elif content_type == 'seasons':
             video_list = self.browse_seasons(params)
-        elif type == 'episodes':
+        elif content_type == 'episodes':
             video_list = self.browse_episodes(params)
-        elif type == 'search':
+        elif content_type == 'search':
             video_list = self.search(params)
         return video_list
         
-    def _browse_content( self, type, params ):
+    def _browse_content( self, content_type, params ):
 
         u_params = {'page':    params.get('page', 1)}
-        url_params = {'#content': type}
+        url_params = {'#content': content_type}
 
         if params.get('sort') == 'updates':
             action = 'browse_content_updates'
@@ -107,17 +99,16 @@ class zonamobi:
 
         r = self._http_request(action, u_params, url_params=url_params)
 
-        self._json = r.json()
-
-        self._items = self._json.get('items', [])
+        json = r.json()
+        items = json.get('items', [])
             
-        result = {'count': len(self._items),
-                  'title': self._json['title_h1'].strip().encode('utf-8'),
-                  'total_pages': self._json.get('pagination', {}).get('total_pages', 0),
-                  'list':  self._make_list(type)}
+        result = {'count': len(items),
+                  'title': json['title_h1'].strip().encode('utf-8'),
+                  'total_pages': json.get('pagination', {}).get('total_pages', 0),
+                  'list':  self._make_list(content_type, json, items)}
         return result
 
-    def get_content_details( self, params ):
+    def get_content_details( self, params, return_item=False ):
         url_params = {'#name_id': params['name_id']}
 
         content = params['type']
@@ -130,15 +121,18 @@ class zonamobi:
             url_params['#content'] = content
 
         r = self._http_request(action, url_params=url_params)
-        self._json = r.json()
+        json = r.json()
 
         if params['type'] == 'movies':
-            self._item = self._json['movie']
+            item = json['movie']
         else:
-            self._item = self._json['serial']
+            item = json['serial']
         
-        details = self._get_details(params)
-        return details
+        details = self._get_details(json, item, params)
+        if return_item:
+            return details, item
+        else:
+            return details
 
     def browse_episodes( self, params ):
 
@@ -146,21 +140,21 @@ class zonamobi:
                       '#season': str(params['season'])}
 
         r = self._http_request('browse_episodes', url_params=url_params)
-        self._json = r.json()
+        json = r.json()
 
-        self._item = self._json['serial']
-        self._items = self._make_eposode_list()
+        item = json['serial']
+        items = self._make_eposode_list(json)
         
-        result = {'count': len(self._items),
-                  'title': self._item['name_rus'],
+        result = {'count': len(items),
+                  'title': item['name_rus'],
                   'season': params['season'],
-                  'list':  self._make_list('episodes')}
+                  'list':  self._make_list('episodes', json, items, item)}
         return result
 
-    def _make_eposode_list( self ):
+    def _make_eposode_list( self, json ):
         episodes = []
 
-        items = self._json['episodes']['items']
+        items = json['episodes']['items']
         if type(items) == dict:
             for key, val in items.iteritems():
                 episodes.append(val)
@@ -177,28 +171,28 @@ class zonamobi:
                       '#name_id': params['name_id']}
                       
         r = self._http_request('get_content_details', url_params=url_params)
-        self._json = r.json()
+        json = r.json()
         
-        self._item = self._json['serial']
+        item = json['serial']
         
-        result = {'count': int(self._json['seasons']['count']),
-                  'title': self._item['name_rus'],
-                  'list':  self._make_list('seasons')}
+        result = {'count': int(json['seasons']['count']),
+                  'title': item['name_rus'],
+                  'list':  self._make_list('seasons', json, item=item)}
 
         return result
 
     def get_filters( self ):
         r = self._http_request('get_filters')
-        self._json = r.json()
+        json = r.json()
 
         genres = []
-        for key, genre in self._json['genres'].iteritems():
+        for key, genre in json['genres'].iteritems():
             genres.append({'name': genre['name'],
                           'value': genre['translit']
                           })
 
         countries = []
-        for country in self._json['countries']:
+        for country in json['countries']:
             countries.append({'name': country['name'],
                               'value': country['translit']
                               })
@@ -210,9 +204,9 @@ class zonamobi:
                             })
 
         r = self._http_request('main')
-        self._json = r.json()
+        json = r.json()
 
-        current_year = self._json['current_year']
+        current_year = json['current_year']
         last_year = current_year // 10 * 10
                             
         years = []
@@ -259,28 +253,28 @@ class zonamobi:
         u_params = {'page':    params.get('page', 1)}
         
         r = self._http_request('search', params = u_params, url = url)
-        self._json = r.json()
+        json = r.json()
 
-        self._items = self._json.get('items', [])
+        items = json.get('items', [])
 
-        result = {'count': len(self._items),
+        result = {'count': len(items),
                   'title': params['keyword'],
-                  'is_second': self._json['is_second'],
-                  'total_pages': self._json['pagination']['total_pages'],
-                  'list':  self._make_list('search')
+                  'is_second': json['is_second'],
+                  'total_pages': json['pagination']['total_pages'],
+                  'list':  self._make_list('search', json, items)
                   }
         return result
     
     def get_content_url( self, params ):
 
-        video_details = self.get_content_details(params)
+        video_details, item = self.get_content_details(params, True)
         
         video_info = video_details['video_info']
         item_info  = video_details['item_info']
         
         url_params = {'#mobi_link_id': str(video_info['mobi_link_id'])}
         r = self._http_request('get_video_url', url_params=url_params)
-        self._json = r.json()
+        json = r.json()
 
         path = self._get_video_url(video_info['mobi_link_id'])
        
@@ -289,12 +283,12 @@ class zonamobi:
 
     def get_trailer_url( self, params ):
 
-        video_details = self.get_content_details(params)
+        video_details, item = self.get_content_details(params, True)
         
-        if self._item['trailer']['url']:
-            path = self._item['trailer']['url']
+        if item['trailer']['url']:
+            path = item['trailer']['url']
         else:
-            path = self._get_video_url(self._item['trailer']['id'])
+            path = self._get_video_url(item['trailer']['id'])
        
         item_info = {'path': path}
         return item_info
@@ -304,26 +298,33 @@ class zonamobi:
 
         url_params = {'#mobi_link_id': str(mobi_link_id)}
         r = self._http_request('get_video_url', url_params=url_params)
-        self._json = r.json()
+        json = r.json()
 
         path = ''
-        if not path or video_quality >= 0:
-            path = self._json['lqUrl']
-        if not path or video_quality >= 1:
-            path = self._json['url']
+        try:
+            if not path or video_quality >= 0:
+                path = json['lqUrl']
+            if not path or video_quality >= 1:
+                path = json['url']
+        except:
+            pass
             
         return path
 
-    def _make_list( self, source, params = {} ):
+    def _make_list( self, source, json, items = [], item = {}, params = {} ):
 
         if source in ('movies', 'tvseries', 'search'):
-            for item in self._items:
+            for item in items:
                 video_info = {'type':    'tvseries' if item['serial'] else 'movies',
                               'name_id': item['name_id'],
                               }
 
                 title = item['name_rus']
                 title_orig = item.get('name_eng') if item.get('name_eng') else item['name_rus']
+                if type(title) == int:
+                    title = str(title)
+                if type(title_orig) == int:
+                    title_orig = str(title_orig)
 
                 item_info = {'label':  title,
                              'ratings': self._get_rating(item),
@@ -347,32 +348,33 @@ class zonamobi:
 
         elif source == 'episodes':
 
-            item = self._item
-            
             title = item['name_rus']
             title_orig = item.get('name_eng') if item.get('name_eng') else item['name_rus']
+            if type(title) == int:
+                title = str(title)
+            if type(title_orig) == int:
+                title_orig = str(title_orig)
 
-            for episode in self._items:
+            for episode in items:
                 video_info = {'type': source,
                               'name_id': item['name_id'],
                               'season': episode['season'],
                               'episode': episode['episode'],
                               'originaltitle': item.get('name_original') if item.get('name_original') else item['name_rus'],
                               }
-                yield self._get_details( video_info )
+                yield self._get_details( json, item, video_info )
 
         elif source == 'seasons':
-            item = self._item
             
-            for season in xrange(1, self._json['seasons']['count'] + 1):
+            for season in xrange(1, json['seasons']['count'] + 1):
                 video_info = {'type':    source,
                               'name_id': item['name_id'],
                               'season':  season}
 
-                yield self._get_details( video_info )
+                yield self._get_details( json, item, video_info )
     
-    def _get_episode( self, episode, season ):
-        for episode_ in self._make_eposode_list():
+    def _get_episode( self, episode, season, json ):
+        for episode_ in self._make_eposode_list(json):
             if episode_['episode'] == int(episode) \
                and episode_['season'] == int(season):
                 return episode_
@@ -408,8 +410,7 @@ class zonamobi:
                 'defaultt': False,
                 }
         
-    def _get_premiere_date( self ):
-        item = self._item
+    def _get_premiere_date( self, item ):
         
         premiered = ''
         
@@ -441,9 +442,7 @@ class zonamobi:
         
         return premiered
         
-    def _get_details( self, params = {} ):
-
-        item = self._item
+    def _get_details( self, json, item, params = {} ):
 
         video_info = {}
         video_info.update(params)
@@ -451,10 +450,10 @@ class zonamobi:
         #Defaults
         poster = item['image']
         thumb = item['image']
-        fanart = self._json['backdrops']['image_1280']
+        fanart = json['backdrops']['image_1280']
         plot = item.get('description')
 
-        premiered = self._get_premiere_date()
+        premiered = self._get_premiere_date(item)
         mediatype = 'video'
 
         aired = ''
@@ -484,11 +483,11 @@ class zonamobi:
 
         #Genres
         genres = []
-        for genre in self._json['genres']:
+        for genre in json['genres']:
             genres.append(genre['name'])
         
         
-        persons = self._json.get('persons', {})
+        persons = json.get('persons', {})
 
         #Cast
         cast = []
@@ -508,7 +507,7 @@ class zonamobi:
 
         #Country
         country = []
-        for country_ in self._json.get('countries', []):
+        for country_ in json.get('countries', []):
             country.append(country_['name'])
 
         #Date
@@ -524,15 +523,15 @@ class zonamobi:
             p_episode = params.get('episode')
             p_season = params.get('season')
 
-            season = self._json['seasons']['count']
-            episode = self._json['episodes']['count_all']
+            season = json['seasons']['count']
+            episode = json['episodes']['count_all']
             
             if p_episode is not None:
-                episode_ = self._get_episode(p_episode, p_season)
+                episode_ = self._get_episode(p_episode, p_season, json)
                 mobi_link_id = episode_.get('mobi_link_id','')
 
                 mediatype = 'episode'
-                thumb = self._json['images'].get(str(mobi_link_id))
+                thumb = json['images'].get(str(mobi_link_id))
 
                 release_date = episode_.get('release_date')
                 if release_date:
@@ -556,7 +555,7 @@ class zonamobi:
                 title = item_title
                 originaltitle = item_title_orig
                 duration = 0
-                episodes = self._make_eposode_list()
+                episodes = self._make_eposode_list(json)
                 for episode_ in episodes:
                     if episode_['episode'] == 1:
                       if episode_['release_date']:

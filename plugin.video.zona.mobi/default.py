@@ -31,11 +31,12 @@ def _get_rating_source():
     return source
 
 def _show_api_error(err):
-    text = ''
-    if err.code == 1:
-        text = _('Connection error')
-    else:
+    plugin.log_error(err)
+    try:
+        text = _(str(err))
+    except:
         text = str(err)
+    
     xbmcgui.Dialog().notification(plugin.addon.getAddonInfo('name'), text, xbmcgui.NOTIFICATION_ERROR)
 
 def _show_notification(text):
@@ -147,12 +148,16 @@ def _get_sort_methods( cat ):
     if cat == 'episodes' \
       and not plugin.use_atl_names:
         sort_methods.append(xbmcplugin.SORT_METHOD_EPISODE)
+    elif cat == 'seasons':
+        sort_methods.append(xbmcplugin.SORT_METHOD_LABEL_IGNORE_THE)
     elif cat == 'search':
-        sort_methods.append(xbmcplugin.SORT_METHOD_NONE)
+        sort_methods.append({'sortMethod': xbmcplugin.SORT_METHOD_UNSORTED, 'label2Mask': '%Y / %R'})
         sort_methods.append(xbmcplugin.SORT_METHOD_VIDEO_YEAR)
-        sort_methods.append(xbmcplugin.SORT_METHOD_TITLE_IGNORE_THE)
+        sort_methods.append({'sortMethod': xbmcplugin.SORT_METHOD_TITLE_IGNORE_THE, 'label2Mask': '%Y / %R'})
+    elif cat in ['movies', 'tvseries']:
+        sort_methods.append({'sortMethod': xbmcplugin.SORT_METHOD_UNSORTED, 'label2Mask': '%Y / %R'})
     else:
-        sort_methods.append(xbmcplugin.SORT_METHOD_NONE)
+        sort_methods.append(xbmcplugin.SORT_METHOD_UNSORTED)
 
     return sort_methods
 
@@ -278,6 +283,7 @@ def _make_item( video_item, search ):
                     rating['defaultt'] = True
 
         if video_type == 'movies':
+            is_folder = False
             is_playable = True
             url = plugin.get_url(action='play', _type = video_type, _name_id = video_info['name_id'])
 
@@ -303,6 +309,7 @@ def _make_item( video_item, search ):
                 item_info['info']['video']['trailer'] = trailer_url
 
         elif video_type == 'tvseries':
+            is_folder = True
             is_playable = False
             url = plugin.get_url(action='list_videos', cat = 'seasons', _name_id = video_info['name_id'])
 
@@ -324,6 +331,7 @@ def _make_item( video_item, search ):
                 label_list.append(' (%d)' % item_info['info']['video']['year'])
 
         elif video_type == 'seasons':
+            is_folder = True
             is_playable = False
             url = plugin.get_url(action='list_videos', cat = 'episodes', _name_id = video_info['name_id'], _season = video_info['season'])
 
@@ -334,6 +342,7 @@ def _make_item( video_item, search ):
             label_list.append(title)
 
         elif video_type == 'episodes':
+            is_folder = False
             is_playable = True
             url = plugin.get_url(action='play', _type = 'episodes', _name_id = video_info['name_id'], _season = video_info['season'], _episode = video_info['episode'])
 
@@ -353,6 +362,7 @@ def _make_item( video_item, search ):
         item_info['label'] = ''.join(label_list)
         item_info['url'] = url
         item_info['is_playable'] = is_playable
+        item_info['is_folder'] = is_folder
         
         _backward_capatibility(item_info)
 

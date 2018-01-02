@@ -1,9 +1,9 @@
 ﻿<?xml version="1.0" encoding="UTF-8"?>
-<addon id="plugin.video.zona.mobi" version="0.1.5" name="ZONA.mobi" provider-name="vl.maksime">
+<addon id="plugin.video.zona.mobi" version="0.1.6" name="ZONA.mobi" provider-name="vl.maksime">
     <requires>
         <import addon="xbmc.python" version="2.1.0"/>
         <import addon="script.module.requests" version="2.12.4"/>
-        <import addon="script.module.simpleplugin" version="2.2.0"/>
+        <import addon="script.module.simpleplugin" version="2.3.2"/>
     </requires>
     <extension point="xbmc.python.pluginsource" library="default.py">
         <provides>video</provides>
@@ -19,10 +19,10 @@
         <platform>all</platform>
         <license>GNU GENERAL PUBLIC LICENSE. Version 3, 29 June 2007</license>
         <forum>http://xbmc.ru/forum/showthread.php?t=14529</forum>
-        <website>https://zona.mobi/</website>
+        <website>https://zona.video/</website>
         <email>vl.maksime@gmail.com</email>
         <source>https://github.com/vlmaksime/plugin.video.zona.mobi</source>
-        <news>v0.1.5 (2017-09-07)[CR]- Исправление ошибок</news>
+        <news>v0.1.6 (2018-01-02)[CR]- Обновлен адрес сайта</news>
         <assets>
             <icon>icon.png</icon>
             <screenshot>resources\media\screenshot-01.jpg</screenshot>
