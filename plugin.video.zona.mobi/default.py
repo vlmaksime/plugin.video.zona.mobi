@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 # Module: default
 # License: GPL v.3 https://www.gnu.org/copyleft/gpl.html
 
@@ -39,7 +39,7 @@ def _show_api_error(err):
         text = _(str(err))
     except:
         text = str(err)
-    
+
     xbmcgui.Dialog().notification(plugin.addon.getAddonInfo('name'), text, xbmcgui.NOTIFICATION_ERROR)
 
 def _show_notification(text):
@@ -55,7 +55,7 @@ def _get_request_params( params ):
 def _remove_param(params, name):
     if params.get(name):
         del params[name]
-    
+
 @plugin.action()
 def root( params ):
     return plugin.create_listing(_list_root(), content='files')
@@ -72,7 +72,7 @@ def _list_root():
         item_icon = item.get('icon')
         if not item_icon:
             item_icon = plugin.icon
-        
+
         list_item = {'label': item['label'],
                      'url': url,
                      'icon': item_icon,
@@ -194,7 +194,7 @@ def _make_video_list( video_list, params={}, dir_params = {} ):
        and usearch \
        and video_list.get('is_second', False):
         video_list['list'] = []
-        
+
     use_filters  = not search and (cur_cat in ['movies', 'tvseries'])
     use_pages    = not usearch and total_pages
 
@@ -271,7 +271,7 @@ def _get_filter_icon( filter ):
 
     if not image:
         image = plugin.icon
-        
+
     return image
 
 def _make_item( video_item, search ):
@@ -376,7 +376,7 @@ def _make_item( video_item, search ):
         item_info['url'] = url
         item_info['is_playable'] = is_playable
         item_info['is_folder'] = is_folder
-        
+
         _backward_capatibility(item_info)
 
         return item_info
@@ -406,7 +406,7 @@ def _backward_capatibility( item_info ):
 
     if major_version < '15':
         item_info['info']['video']['duration'] = (item_info['info']['video']['duration'] / 60)
-        
+
 def _make_category_label( color, title, category ):
     label_parts = []
     label_parts.append('[COLOR=%s][B]' % color)
@@ -425,7 +425,7 @@ def _make_colour_label( color, title ):
 
 def _get_image( image ):
     return image if xbmc.skinHasImage(image) else plugin.icon
-    
+
 def get_video_details( params ):
     return _api.get_content_details(params)
 

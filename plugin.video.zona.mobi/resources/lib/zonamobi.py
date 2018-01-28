@@ -9,13 +9,17 @@ import os
 import sqlite3
 import json
 import time
+try:
+    import json
+except ImportError:
+    import simplejson as json
 
 class ZonaMobiApiError(Exception):
     """Custom exception"""
     pass
 
 class ZonaMobiCache:
-    
+
     def __init__( self, cache_dir, cache_hours=48 ):
         self._version = 1
 
@@ -24,18 +28,18 @@ class ZonaMobiCache:
         if not os.path.exists(cache_dir):
             os.makedirs(cache_dir)
         db_path = os.path.join(cache_dir, 'cache.db')
-        
+
         db_exist = os.path.exists(db_path)
 
         self.conn = sqlite3.connect(db_path)
         self.conn.row_factory = self._dict_factory
-        
+
         if db_exist:
             self.check_for_update()
             self.remove_old_data()
         else:
             self.create_database()
-            
+
     def _dict_factory(self, cursor, row):
         d = {}
         for idx, col in enumerate(cursor.description):
@@ -46,14 +50,14 @@ class ZonaMobiCache:
 
         c = self.conn.cursor()
         c.execute('SELECT idVersion FROM version LIMIT 1')
-        
+
         result = c.fetchone()
         if result['idVersion'] < self._version:
             c.execute('DELETE FROM version')
             c.execute('INSERT INTO version (idVersion) VALUES (:version)', {'version': self._version} )
 
             self.conn.commit()
-        
+
 
     def create_database(self):
 
@@ -63,22 +67,22 @@ class ZonaMobiCache:
 
         c.execute('CREATE UNIQUE INDEX details_idx ON details(name_id, season)')
         c.execute('INSERT INTO version (idVersion) VALUES (:version)', {'version': self._version} )
-        
+
         self.conn.commit()
-     
+
     def get_details(self, params):
         sql_params = {'name_id': params['name_id'],
                       'season': params.get('season', 0)}
 
         c = self.conn.cursor()
         c.execute('SELECT data FROM details WHERE name_id = :name_id AND season = :season LIMIT 1', sql_params)
-        
+
         result = c.fetchone()
         if result is not None:
             return result['data']
 
     def set_details(self, params, data):
-        
+
         sql_params = {'data': data,
                       'name_id': params['name_id'],
                       'season': params.get('season', 0),
@@ -86,24 +90,24 @@ class ZonaMobiCache:
 
         c = self.conn.cursor()
         c.execute('INSERT OR REPLACE INTO details (name_id, season, data, time) VALUES (:name_id, :season, :data, :time)', sql_params)
-        
+
         self.conn.commit()
-    
+
     def set_details_list(self, items):
-        
+
         if items:
             c = self.conn.cursor()
             c.executemany('INSERT OR REPLACE INTO details (name_id, season, data, time) VALUES (:name_id, :season, :data, :time)', items)
-            
+
             self.conn.commit()
-        
+
     def remove_old_data(self):
-        
+
         sql_params = {'time': time.time() - self._time_delta}
 
         c = self.conn.cursor()
         c.execute('DELETE FROM details WHERE time < :time', sql_params)
-        
+
         self.conn.commit()
 
 class ZonaMobi:
@@ -114,7 +118,7 @@ class ZonaMobi:
         self.video_quality = params.get('video_quality', 0)
         self.load_details = params.get('load_details', False)
         cache_dir = params.get('cache_dir')
-         
+
         if cache_dir is not None:
             self._cache = ZonaMobiCache(cache_dir)
 
@@ -128,11 +132,11 @@ class ZonaMobi:
                          #content
                          'browse_content': {'url': base_url + '/#content/#filter'},
                          'browse_content_updates': {'url': base_url + '/updates/#content'},
-                         'get_content_details': {'url': base_url + '/#content/#name_id'},                       
+                         'get_content_details': {'url': base_url + '/#content/#name_id'},
                          #tvseries
                          'browse_episodes': {'url': base_url + '/tvseries/#name_id/season-#season'}
                          }
-        
+
         self._html_headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:54.0) Gecko/20100101 Firefox/54.0',
                               'Accept': 'application/json, text/javascript, */*; q=0.01',
                               'Accept-Encoding': 'gzip, deflate, br',
@@ -148,7 +152,7 @@ class ZonaMobi:
             url = action_settings.get('url', url)
             for key, val in url_params.iteritems():
                 url = url.replace(key, str(val))
-            
+
         try:
             r = requests.get(url, data=data, params=params, headers=self._html_headers)
             r.raise_for_status()
@@ -169,7 +173,7 @@ class ZonaMobi:
             filter_value = params.get(filter_key)
             if filter_value:
                 filters.append('%s-%s' % (filter_key, filter_value))
-        
+
         if len(filters):
             filters.insert(0, 'filter')
         return '/'.join(filters)
@@ -184,7 +188,7 @@ class ZonaMobi:
         elif content_type == 'search':
             video_list = self.search(params)
         return video_list
-        
+
     def browse_content( self, content_type, params ):
 
         u_params = {'page':    params.get('page', 1)}
@@ -217,7 +221,7 @@ class ZonaMobi:
 
         item = data['serial']
         items = self._make_eposode_list(data)
-        
+
         result = {'count': len(items),
                   'title': item['name_rus'],
                   'season': params['season'],
@@ -235,19 +239,19 @@ class ZonaMobi:
             episodes = items
 
         episodes.sort(key=self._sort_by_episode)
-        
+
         return episodes
-    
+
     def browse_seasons( self, params ):
 
         url_params = {'#content': 'tvseries',
                       '#name_id': params['name_id']}
-                      
+
         r = self._http_request('get_content_details', url_params=url_params)
         data = r.json()
-        
+
         item = data['serial']
-        
+
         result = {'count': int(data['seasons']['count']),
                   'title': item['name_rus'],
                   'list':  self._make_list('seasons', data, item=item)}
@@ -281,7 +285,7 @@ class ZonaMobi:
 
         current_year = data['current_year']
         last_year = current_year // 10 * 10
-                            
+
         years = []
         for year in xrange(current_year, last_year - 1, -1):
             years.append({'name': str(year),
@@ -295,7 +299,7 @@ class ZonaMobi:
         years.append({'name': u'до 40-х',
                       'value': 'old'
                       })
-        
+
         sorts = []
         sorts.append({'name': u'По популярности',
                       'value': ''
@@ -309,22 +313,22 @@ class ZonaMobi:
         sorts.append({'name': u'Последние обновления',
                       'value': 'updates'
                       })
-                      
+
         result = {'genre': genres,
                   'country': countries,
                   'rating': ratings,
                   'year': years,
                   'sort': sorts
                   }
-                  
+
         return result
-    
+
     def search( self, params ):
 
         url = self._actions['search'].get('url').replace('#keyword', urllib.quote(params['keyword']))
 
         u_params = {'page':    params.get('page', 1)}
-        
+
         r = self._http_request('search', params = u_params, url = url)
         data = r.json()
 
@@ -365,43 +369,43 @@ class ZonaMobi:
                 data = json.loads(cached_data)
 
         return data
-    
+
     def get_content_url( self, params ):
 
         data = self._get_content_data(params)
-            
+
         if params['type'] == 'movies':
             item = data['movie']
         else:
             item = data['serial']
-        
+
         item_info = self._get_item_info(data, item, params=params)
-        
+
         if params['type'] == 'movies':
             mobi_link_id = item['mobi_link_id']
         else:
             episode = self._get_episode(params['episode'], params['season'], data)
             mobi_link_id = episode.get('mobi_link_id','')
-            
+
         path = self._get_video_url(mobi_link_id)
-       
+
         item_info['path'] = path
         return item_info
 
     def get_trailer_url( self, params ):
 
         data = self._get_content_data(params)
-            
+
         if params['type'] == 'movies':
             item = data['movie']
         else:
             item = data['serial']
-        
+
         if item['trailer']['url']:
             path = item['trailer']['url']
         else:
             path = self._get_video_url(item['trailer']['id'])
-       
+
         item_info = {'path': path}
         return item_info
 
@@ -420,11 +424,11 @@ class ZonaMobi:
                 path = data['url']
         except:
             pass
-            
+
         return path
 
     def _get_items_details(self, source, data):
-        
+
         details = {}
         if not self.load_details:
             return details
@@ -443,30 +447,30 @@ class ZonaMobi:
                               'season': season,
                               'content': 'tvseries' if item['serial'] else 'movies'}
                     req_items.append(params)
-            
-                
+
+
 
         if self._cache is not None:
             items_for_caching =[]
-    
+
             for item in req_items:
                 cached_data = self._cache.get_details(item)
                 if cached_data is not None:
                     item_key = '%s_%d' % (item['name_id'], item['season'])
                     details[item_key] = json.loads(cached_data)
-    
+
         for item in req_items:
             item_key = '%s_%d' % (item['name_id'], item['season'])
             if details.get(item_key) is None:
                 url_params = {'#name_id': item['name_id']}
-        
+
                 if source == 'seasons':
                     action = 'browse_episodes'
                     url_params['#season'] = item['season']
                 else:
                     action = 'get_content_details'
                     url_params['#content'] = item['content']
-        
+
                 r = self._http_request(action, url_params=url_params)
 
                 details[item_key] = r.json()
@@ -478,12 +482,12 @@ class ZonaMobi:
                                         'data': r.text,
                                         }
                     items_for_caching.append(item_for_caching)
-            
+
         if self._cache is not None:
             self._cache.set_details_list(items_for_caching)
 
         return details
-    
+
     def _make_list( self, source, data, items = [], item = {}, params = {} ):
 
         if source in ['movies', 'tvseries', 'search']:
@@ -501,22 +505,22 @@ class ZonaMobi:
                 else:
                     full_details = False
                     item_detail = item
-                    
+
                 video_info = {'type': 'tvseries' if item_detail['serial'] else 'movies',
                               'name_id': item_detail['name_id'],
                               'have_trailer': True if item_detail.get('trailer_url') else False,
                               }
-        
+
                 item_info = self._get_item_info(item_data, item_detail, full_details )
-                
+
                 video_info = {'item_info':  item_info,
                               'video_info': video_info,
                               }
-                              
+
                 yield video_info
 
         elif source == 'seasons':
-            
+
             details = self._get_items_details(source, data)
 
             for season in xrange(1, data['seasons']['count'] + 1):
@@ -532,19 +536,19 @@ class ZonaMobi:
                     full_details = False
                     season_detail = item
                     season_data = data
-                    
+
                 video_info = {'type':    source,
                               'name_id': item['name_id'],
                               'season':  season}
 
                 item_info = self._get_item_info(season_data, season_detail, params=video_info )
-                
+
                 video_info = {'item_info':  item_info,
                               'video_info': video_info,
                               }
-                              
+
                 yield video_info
-    
+
         elif source == 'episodes':
 
             title = item['name_rus']
@@ -561,13 +565,13 @@ class ZonaMobi:
                               'episode': episode['episode'],
                               'originaltitle': item.get('name_original') if item.get('name_original') else item['name_rus'],
                               }
- 
+
                 item_info = self._get_item_info(data, item, params=video_info )
 
                 video_info = {'item_info':  item_info,
                               'video_info': video_info,
                               }
-                              
+
                 yield video_info
 
     def _get_episode( self, episode, season, data ):
@@ -578,7 +582,7 @@ class ZonaMobi:
         return {}
 
     def _get_rating( self, item ):
-    
+
         r_kinopoisk = self._make_rating(item, 'kinopoisk')
         r_imdb = self._make_rating(item, 'imdb')
         r_zona = self._make_rating(item, 'zona')
@@ -591,26 +595,26 @@ class ZonaMobi:
         if type != 'zona':
             keys.append(type)
         rating_field = '_'.join(keys)
-        
+
         keys.append('count')
         votes_field = '_'.join(keys)
-        
+
         rating = item.get(rating_field, '0')
         if rating is not None:
             rating = float(rating)
         else:
             rating = 0
-            
+
         return {'type':	type,
                 'rating': rating,
                 'votes': item.get(votes_field, 0),
                 'defaultt': False,
                 }
-        
+
     def _get_premiere_date( self, item ):
-        
+
         premiered = ''
-        
+
         months = {u'января':   1,
                   u'февраля':  2,
                   u'марта':    3,
@@ -624,19 +628,19 @@ class ZonaMobi:
                   u'ноября':  11,
                   u'декабря': 12,
                   }
-        
+
         release_date_int = item.get('release_date_int', '')
         release_date_rus = item.get('release_date_rus', '')
-        
+
         if release_date_int:
             release_date = release_date_int
         else:
             release_date = release_date_rus
-            
+
         if release_date:
             parts = release_date.split(' ')
             premiered = '%s-%02d-%02d' % (parts[2], months[parts[1]], int(parts[0]))
-        
+
         return premiered
 
     def _get_item_info( self, data, item, full_details=True, params={} ):
@@ -665,7 +669,7 @@ class ZonaMobi:
         properties = {}
         mediatype = 'video'
         duration = 0
-        
+
         #Defaults
         if full_details:
             poster = item['image']
@@ -674,14 +678,14 @@ class ZonaMobi:
             premiered = self._get_premiere_date(item)
         else:
             poster = item['cover']
-            
+
         thumb = poster
 
         #Titles
         item_title = item['name_rus']
         if type(item_title) == int:
             item_title = str(item_title)
-        
+
         if full_details:
             item_title_orig = item.get('name_original') if item.get('name_original') else item['name_rus']
         else:
@@ -693,44 +697,44 @@ class ZonaMobi:
             #Duration
             if item['runtime']:
                 duration = item['runtime']['value'] * 60
-    
+
             #Genres
             for genre in data['genres']:
                 genres.append(genre['name'])
-            
+
             persons = data.get('persons', {})
-    
+
             #Cast
             for actor in persons.get('actors', []):
                 cast.append({'name': actor['name'],
                              'thumbnail': actor['cover']})
-    
+
             #Director
             for _director in persons.get('director', []):
                 director.append(_director['name'])
-    
+
             #Writer
             for scenarist in persons.get('scenarist', []):
                 writer.append(scenarist['name'])
-    
+
             #Country
             for _country in data.get('countries', []):
                 country.append(_country['name'])
-    
+
             #Date
             mobi_link_date = item.get('mobi_link_date', '')
             if mobi_link_date:
                 date = ('%s.%s.%s') %(mobi_link_date[8:10], mobi_link_date[5:7], mobi_link_date[0:4])
-        
+
         if item['serial']:
             tvshowtitle = item_title
-            
+
             p_episode = params.get('episode')
             p_season = params.get('season')
 
             season = data['seasons']['count']
             episode = data['episodes']['count_all']
-            
+
             if p_episode is not None:
                 _episode = self._get_episode(p_episode, p_season, data)
                 mobi_link_id = _episode.get('mobi_link_id','')
@@ -741,7 +745,7 @@ class ZonaMobi:
                 release_date = _episode.get('release_date')
                 if release_date:
                     aired = release_date[0:10]
-                    
+
                 title = _episode.get('title', '')
                 if type(title) == int:
                     title = str(title)
@@ -749,12 +753,12 @@ class ZonaMobi:
 
                 episode = _episode['episode']
                 season = _episode['season']
-                
+
 
                 if episode == 0:
                     episode = season
                     season = 0
-                
+
             elif p_season is not None:
                 mediatype = 'season'
                 title = item_title
@@ -786,7 +790,7 @@ class ZonaMobi:
                      'cast':   cast,
                      'ratings': ratings,
                      'properties': properties,
-                     'info': {'video': {'date': date, 
+                     'info': {'video': {'date': date,
                                         'genre': genres,
                                         'country': country,
                                         'year': item.get('year'),
@@ -813,5 +817,5 @@ class ZonaMobi:
                                                'season': season,
                                                'tvshowtitle': tvshowtitle,
                                                })
-                                               
-        return item_info         
+
+        return item_info
