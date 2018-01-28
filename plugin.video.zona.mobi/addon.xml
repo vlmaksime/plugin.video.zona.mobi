@@ -1,8 +1,9 @@
-﻿<?xml version="1.0" encoding="UTF-8"?>
-<addon id="plugin.video.zona.mobi" version="0.1.6" name="ZONA.mobi" provider-name="vl.maksime">
+<?xml version="1.0" encoding="UTF-8"?>
+<addon id="plugin.video.zona.mobi" version="0.1.7" name="ZONA.video" provider-name="vl.maksime">
     <requires>
-        <import addon="xbmc.python" version="2.1.0"/>
-        <import addon="script.module.requests" version="2.12.4"/>
+        <import addon="xbmc.python" version="2.19.0"/>
+        <import addon="script.module.requests"/>
+        <import addon="script.module.simplejson"/>
         <import addon="script.module.simpleplugin" version="2.3.2"/>
     </requires>
     <extension point="xbmc.python.pluginsource" library="default.py">
@@ -12,9 +13,9 @@
         <summary lang="en">Movies and TV Shows online</summary>
         <summary lang="ru">Фильмы и Сериалы онлайн</summary>
         <description lang="en"></description>
-        <description lang="ru"></description>
+        <description lang="ru">Выбирайте фильмы и сериалы по жанру, году, рейтингу, популярности.</description>
         <disclaimer lang="en"></disclaimer>
-        <disclaimer lang="ru"></disclaimer>
+        <disclaimer lang="ru">Дополнение для просмотра фильмов и сериалов онлайн.</disclaimer>
         <language>ru</language>
         <platform>all</platform>
         <license>GNU GENERAL PUBLIC LICENSE. Version 3, 29 June 2007</license>
@@ -22,7 +23,7 @@
         <website>https://zona.video/</website>
         <email>vl.maksime@gmail.com</email>
         <source>https://github.com/vlmaksime/plugin.video.zona.mobi</source>
-        <news>v0.1.6 (2018-01-02)[CR]- Обновлен адрес сайта</news>
+        <news>v0.1.7 (2018-01-28)[CR]- Переделан алгоритм кеширования запросов[CR][CR]v0.1.6 (2018-01-02)[CR]- Обновлен адрес сайта</news>
         <assets>
             <icon>icon.png</icon>
             <screenshot>resources\media\screenshot-01.jpg</screenshot>
