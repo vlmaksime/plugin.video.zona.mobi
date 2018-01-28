@@ -311,7 +311,7 @@ class ZonaMobi:
                       })
                       
         result = {'genre': genres,
-                  'country':  countries,
+                  'country': countries,
                   'rating': ratings,
                   'year': years,
                   'sort': sorts
