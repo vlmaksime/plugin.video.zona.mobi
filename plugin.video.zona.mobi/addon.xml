@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="UTF-8"?>
-<addon id="plugin.video.zona.mobi" version="0.1.6" name="ZONA.mobi" provider-name="vl.maksime">
+<addon id="plugin.video.zona.mobi" version="0.1.6" name="ZONA.video" provider-name="vl.maksime">
     <requires>
-        <import addon="xbmc.python" version="2.1.0"/>
+        <import addon="xbmc.python" version="2.19.0"/>
         <import addon="script.module.requests" version="2.12.4"/>
         <import addon="script.module.simpleplugin" version="2.3.2"/>
     </requires>
