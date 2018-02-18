@@ -2,14 +2,13 @@
 # Module: default
 # License: GPL v.3 https://www.gnu.org/copyleft/gpl.html
 
-import os
 import xbmc
 import xbmcgui
 import xbmcplugin
 
 from simpleplugin import Plugin
 
-from resources.lib.zonamobi import ZonaMobi
+from resources.lib.zonamobi import ZonaMobi, ZonaMobiApiError
 
 # Create plugin instance
 plugin = Plugin()
@@ -101,7 +100,7 @@ def list_videos( params ):
     try:
         video_list = _get_video_list(cur_cat, _get_request_params(params))
         succeeded = True
-    except apizonamobi.ZonaMobiApiError as err:
+    except ZonaMobiApiError as err:
         _show_api_error(err)
         succeeded = False
         return
@@ -236,38 +235,38 @@ def _make_video_list( video_list, params={}, dir_params = {} ):
                          'url':   url}
             yield item_info
 
-def _make_filter_item( filter, params, dir_params, filters ):
-    cur_value = params.get('_%s' % filter,'')
+def _make_filter_item( filter_name, params, dir_params, filters ):
+    cur_value = params.get('_%s' % filter_name,'')
 
-    filter_title = _get_filter_title(filter)
-    url = plugin.get_url(action='select_filer', filter = filter, **dir_params)
-    label = _make_category_label('yellowgreen', filter_title, _get_filter_name(filters[filter], cur_value))
+    filter_title = _get_filter_title(filter_name)
+    url = plugin.get_url(action='select_filer', filter = filter_name, **dir_params)
+    label = _make_category_label('yellowgreen', filter_title, _get_filter_name(filters[filter_name], cur_value))
     list_item = {'label': label,
                  'is_folder':   False,
                  'is_playable': False,
                  'url': url,
-                 'icon': _get_filter_icon(filter),
+                 'icon': _get_filter_icon(filter_name),
                  'fanart': plugin.fanart}
 
     return list_item
 
-def _get_filter_title( filter ):
+def _get_filter_title(filter_name):
     result = ''
-    if filter == 'genre': result = _('Genre')
-    elif filter =='year': result = _('Year')
-    elif filter =='country': result = _('Country')
-    elif filter =='rating': result = _('Rating')
-    elif filter =='sort': result = _('Sort')
+    if filter_name == 'genre': result = _('Genre')
+    elif filter_name =='year': result = _('Year')
+    elif filter_name =='country': result = _('Country')
+    elif filter_name =='rating': result = _('Rating')
+    elif filter_name =='sort': result = _('Sort')
 
     return result
 
-def _get_filter_icon( filter ):
+def _get_filter_icon(filter_name):
     image = ''
-    if filter == 'genre': image = _get_image('DefaultGenre.png')
-    elif filter =='year': image = _get_image('DefaultYear.png')
-    elif filter =='country': image = _get_image('DefaultCountry.png')
-    elif filter =='rating': image = _get_image('DefaultFavourites.png')
-    elif filter =='sort': image = _get_image('DefaultMovieTitle.png')
+    if filter_name == 'genre': image = _get_image('DefaultGenre.png')
+    elif filter_name =='year': image = _get_image('DefaultYear.png')
+    elif filter_name =='country': image = _get_image('DefaultCountry.png')
+    elif filter_name =='rating': image = _get_image('DefaultFavourites.png')
+    elif filter_name =='sort': image = _get_image('DefaultMovieTitle.png')
 
     if not image:
         image = plugin.icon
@@ -502,22 +501,21 @@ def search_history():
 
 @plugin.action()
 def select_filer( params ):
-    filter = params['filter']
-    filter_name = filter
-    filter_title = _get_filter_title(filter)
-    filter_key = '_%s' % filter
+    filter_name = params['filter']
+    filter_title = _get_filter_title(filter_name)
+    filter_key = '_%s' % filter_name
 
-    list = get_filters()[filter]
-    if filter != 'sort':
-        list.insert(0, {'value': '', 'name': _('All')})
+    values_list = get_filters()[filter_name]
+    if filter_name != 'sort':
+        values_list.insert(0, {'value': '', 'name': _('All')})
 
     titles = []
-    for list_item in list:
+    for list_item in values_list:
         titles.append(list_item['name'])
 
     ret = xbmcgui.Dialog().select(filter_title, titles)
     if ret >= 0:
-        filter_value = list[ret]['value']
+        filter_value = values_list[ret]['value']
         if not filter_value and params.get(filter_key):
             del params[filter_key]
         else:
@@ -547,7 +545,7 @@ def play( params ):
         if u_params['type'] == 'episodes' \
            and not item['info']['video']['title']:
             item['info']['video']['title'] = '%s %d' % (_('Episode').decode('utf-8'), item['info']['video']['episode'])
-    except apizonamobi.ZonaMobiApiError as err:
+    except ZonaMobiApiError as err:
         _show_api_error(err)
         item = None
         succeeded = False
@@ -561,7 +559,7 @@ def trailer( params ):
     try:
         item = _api.get_trailer_url( u_params )
         succeeded = True
-    except apizonamobi.ZonaMobiApiError as err:
+    except ZonaMobiApiError as err:
         _show_api_error(err)
         item = None
         succeeded = False
@@ -569,5 +567,7 @@ def trailer( params ):
     return plugin.resolve_url(play_item=item, succeeded=succeeded)
 
 if __name__ == '__main__':
+
     _api = _init_api()
     plugin.run()
+    

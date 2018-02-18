@@ -4,7 +4,6 @@
 
 import requests
 import urllib
-import re
 import os
 import sqlite3
 import json
@@ -123,7 +122,7 @@ class ZonaMobi:
             self._cache = ZonaMobiCache(cache_dir)
 
         #URLs
-        base_url = 'https://zona.video'
+        base_url = 'https://w1.zona.plus'
 
         self._actions = {'main': {'url': base_url},
                          'get_filters': {'url': base_url + '/ajax/widget/filter'},
@@ -145,7 +144,11 @@ class ZonaMobi:
                               }
 
 
-    def _http_request( self, action, params = {}, data={}, url='', url_params={} ):
+    def _http_request( self, action, params=None, data=None, url='', url_params=None ):
+        params = params or {}
+        data = data or {}
+        url_params = url_params or {}
+        
         action_settings = self._actions.get(action)
 
         if not url:
@@ -232,10 +235,10 @@ class ZonaMobi:
         episodes = []
 
         items = data['episodes']['items']
-        if type(items) == dict:
+        if isinstance(items, dict):
             for key, val in items.iteritems():
                 episodes.append(val)
-        elif type(items) == list:
+        elif isinstance(items, list):
             episodes = items
 
         episodes.sort(key=self._sort_by_episode)
@@ -417,13 +420,10 @@ class ZonaMobi:
         data = r.json()
 
         path = ''
-        try:
-            if not path or video_quality >= 0:
-                path = data['lqUrl']
-            if not path or video_quality >= 1:
-                path = data['url']
-        except:
-            pass
+        if not path or video_quality >= 0:
+            path = data['lqUrl']
+        if not path or video_quality >= 1:
+            path = data['url']
 
         return path
 
@@ -488,7 +488,10 @@ class ZonaMobi:
 
         return details
 
-    def _make_list( self, source, data, items = [], item = {}, params = {} ):
+    def _make_list( self, source, data, items=None, item=None, params=None ):
+        items = items or []
+        item = item or {}
+        params = params or {} 
 
         if source in ['movies', 'tvseries', 'search']:
 
@@ -553,9 +556,9 @@ class ZonaMobi:
 
             title = item['name_rus']
             title_orig = item.get('name_eng') if item.get('name_eng') else item['name_rus']
-            if type(title) == int:
+            if isinstance(title, int):
                 title = str(title)
-            if type(title_orig) == int:
+            if isinstance(title_orig, int):
                 title_orig = str(title_orig)
 
             for episode in items:
@@ -589,11 +592,11 @@ class ZonaMobi:
 
         return [r_imdb, r_kinopoisk, r_zona]
 
-    def _make_rating( self, item, type ):
+    def _make_rating( self, item, rating_source ):
 
         keys = ['rating']
-        if type != 'zona':
-            keys.append(type)
+        if rating_source != 'zona':
+            keys.append(rating_source)
         rating_field = '_'.join(keys)
 
         keys.append('count')
@@ -605,7 +608,7 @@ class ZonaMobi:
         else:
             rating = 0
 
-        return {'type':	type,
+        return {'type':	rating_source,
                 'rating': rating,
                 'votes': item.get(votes_field, 0),
                 'defaultt': False,
@@ -650,7 +653,6 @@ class ZonaMobi:
         aired = ''
         date = ''
         premiered = ''
-        label = ''
         title = ''
         originaltitle = ''
         tvshowtitle = ''
@@ -683,14 +685,14 @@ class ZonaMobi:
 
         #Titles
         item_title = item['name_rus']
-        if type(item_title) == int:
+        if isinstance(item_title, int):
             item_title = str(item_title)
 
         if full_details:
             item_title_orig = item.get('name_original') if item.get('name_original') else item['name_rus']
         else:
             item_title_orig = item.get('name_eng') if item.get('name_eng') else item['name_rus']
-        if type(item_title_orig) == int:
+        if isinstance(item_title_orig, int):
             item_title_orig = str(item_title_orig)
 
         if full_details:
