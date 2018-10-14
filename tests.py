@@ -155,7 +155,7 @@ class ZonaMobiTestCase(unittest.TestCase):
         print('\n#test_get_trailer_url_tvseries')
 
         params = {'type': 'tvseries',
-                  'name_id': 'igra-prestolov',
+                  'name_id': 'interny',
                   }
 
         item_info = self.api.get_trailer_url(params)

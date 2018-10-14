@@ -6,7 +6,6 @@ import requests
 import urllib
 import os
 import sqlite3
-import json
 import time
 try:
     import json
@@ -353,15 +352,18 @@ class ZonaMobi:
         if content == 'episodes':
             action = 'browse_episodes'
             url_params['#season'] = params['season']
-        elif content == 'movies':
+        elif content in ['movies', 'tvseries']:
             action = 'get_content_details'
             url_params['#content'] = content
+        else:
+            action = None
 
         if self._cache is not None:
             cached_data = self._cache.get_details(params)
 
-        if self._cache is None \
-          or cached_data is None:
+        if action is not None \
+          and (self._cache is None \
+               or cached_data is None):
             r = self._http_request(action, url_params=url_params)
             data = r.json()
 
@@ -734,8 +736,9 @@ class ZonaMobi:
             p_episode = params.get('episode')
             p_season = params.get('season')
 
-            season = data['seasons']['count']
-            episode = data['episodes']['count_all']
+            if data is not None:
+                season = data['seasons']['count']
+                episode = data['episodes']['count_all']
 
             if p_episode is not None:
                 _episode = self._get_episode(p_episode, p_season, data)
