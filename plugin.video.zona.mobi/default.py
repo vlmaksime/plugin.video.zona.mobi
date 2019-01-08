@@ -432,6 +432,11 @@ def get_video_details( params ):
 def get_filters():
     return _api.get_filters()
 
+@plugin.mem_cached(180)
+def get_base_url():
+    result = _api.app_update_info()
+    return result['base_url']
+
 def _get_filter_name( list, value ):
     for item in list:
         if item['value'] == value:

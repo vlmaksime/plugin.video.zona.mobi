@@ -6,7 +6,6 @@ import requests
 import urllib
 import os
 import sqlite3
-import json
 import time
 try:
     import json
@@ -122,7 +121,7 @@ class ZonaMobi:
             self._cache = ZonaMobiCache(cache_dir)
 
         #URLs
-        base_url = 'https://w1.zona.plus'
+        base_url = 'https://w6.zona.plus'
 
         self._actions = {'main': {'url': base_url},
                          'get_filters': {'url': base_url + '/ajax/widget/filter'},
@@ -133,7 +132,8 @@ class ZonaMobi:
                          'browse_content_updates': {'url': base_url + '/updates/#content'},
                          'get_content_details': {'url': base_url + '/#content/#name_id'},
                          #tvseries
-                         'browse_episodes': {'url': base_url + '/tvseries/#name_id/season-#season'}
+                         'browse_episodes': {'url': base_url + '/tvseries/#name_id/season-#season'},
+                         'app_update_info': {'url': base_url + '/api/v1/app_update_info'},
                          }
 
         self._html_headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:54.0) Gecko/20100101 Firefox/54.0',
@@ -166,6 +166,10 @@ class ZonaMobi:
         return r
 
 
+    def app_update_info(self):
+        r = self._http_request(app_update_info)
+        return r.json()
+    
     def _sort_by_episode(self, item):
         return item.get('episode_key', '')
 
@@ -353,15 +357,18 @@ class ZonaMobi:
         if content == 'episodes':
             action = 'browse_episodes'
             url_params['#season'] = params['season']
-        elif content == 'movies':
+        elif content in ['movies', 'tvseries']:
             action = 'get_content_details'
             url_params['#content'] = content
+        else:
+            action = None
 
         if self._cache is not None:
             cached_data = self._cache.get_details(params)
 
-        if self._cache is None \
-          or cached_data is None:
+        if action is not None \
+          and (self._cache is None \
+               or cached_data is None):
             r = self._http_request(action, url_params=url_params)
             data = r.json()
 
@@ -734,8 +741,9 @@ class ZonaMobi:
             p_episode = params.get('episode')
             p_season = params.get('season')
 
-            season = data['seasons']['count']
-            episode = data['episodes']['count_all']
+            if data is not None:
+                season = data['seasons']['count']
+                episode = data['episodes']['count_all']
 
             if p_episode is not None:
                 _episode = self._get_episode(p_episode, p_season, data)
