@@ -23,7 +23,7 @@ def _init_api():
 
     settings['cache_dir'] = plugin.config_dir
 
-    return ZonaMobi(settings)
+    return ZonaMobi(plugin.site_url, settings)
 
 def _get_rating_source():
     rating_source = plugin.video_rating
