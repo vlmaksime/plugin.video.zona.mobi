@@ -29,7 +29,7 @@ class ZonaMobiTestCase(unittest.TestCase):
                   'video_quality': 1,
                   }
 
-        self.api = ZonaMobi(params)
+        self.api = ZonaMobi('w21.zona.plus', params)
 
     def test_browse_content_movies(self):
         print('\n#test_browse_content_movies')

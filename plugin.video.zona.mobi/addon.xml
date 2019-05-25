@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<addon id="plugin.video.zona.mobi" version="0.1.9" name="ZONA.plus" provider-name="vl.maksime">
+<addon id="plugin.video.zona.mobi" version="0.2.0" name="ZONA.plus" provider-name="vl.maksime">
     <requires>
         <import addon="xbmc.python" version="2.19.0"/>
-        <import addon="script.module.requests"/>
-        <import addon="script.module.simplejson"/>
+        <import addon="script.module.requests" version="2.12.4"/>
+        <import addon="script.module.simplejson" version="3.3.0"/>
         <import addon="script.module.simpleplugin" version="2.3.2"/>
     </requires>
     <extension point="xbmc.python.pluginsource" library="default.py">
@@ -20,10 +20,10 @@
         <platform>all</platform>
         <license>GNU GENERAL PUBLIC LICENSE. Version 3, 29 June 2007</license>
         <forum>http://xbmc.ru/forum/showthread.php?t=14529</forum>
-        <website>https://w1.zona.plus/</website>
+        <website>https://w6.zona.plus/</website>
         <email>vl.maksime@gmail.com</email>
         <source>https://github.com/vlmaksime/plugin.video.zona.mobi</source>
-        <news>v0.1.9 (2019-01-08)[CR]- Обновлен адрес сайта[CR]- Исправлены ошибки[CR][CR]v0.1.8 (2018-02-18)[CR]- Обновлен адрес сайта[CR]- Исправлены выявленные ошибки[CR][CR]v0.1.7 (2018-01-28)[CR]- Переделан алгоритм кеширования запросов</news>
+        <news>v0.2.0 (2019-05-25)[CR]- Добавлена возможность указывать адрес сайта в настройках дополнения[CR][CR]v0.1.9 (2019-01-08)[CR]- Обновлен адрес сайта[CR]- Исправлены ошибки</news>
         <assets>
             <icon>icon.png</icon>
             <screenshot>resources\media\screenshot-01.jpg</screenshot>

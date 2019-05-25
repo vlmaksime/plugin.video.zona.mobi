@@ -110,7 +110,7 @@ class ZonaMobiCache:
 
 class ZonaMobi:
 
-    def __init__( self, params = {} ):
+    def __init__( self, site_url, params = {} ):
 
         #Settings
         self.video_quality = params.get('video_quality', 0)
@@ -121,7 +121,7 @@ class ZonaMobi:
             self._cache = ZonaMobiCache(cache_dir)
 
         #URLs
-        base_url = 'https://w6.zona.plus'
+        base_url = 'https://{0}'.format(site_url)
 
         self._actions = {'main': {'url': base_url},
                          'get_filters': {'url': base_url + '/ajax/widget/filter'},

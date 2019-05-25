@@ -121,3 +121,7 @@ msgstr ""
 msgctxt "#30223"
 msgid "KinoPoisk"
 msgstr "КиноПоиск"
+
+msgctxt "#30224"
+msgid "Website address"
+msgstr "Адрес веб-сайта"
