@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <settings>
-    <setting label="30224" type="text" id="site_url" default="w21.zona.plus" />
+    <setting label="30224" type="text" id="site_url" default="y1.zona.plus" />
     <setting type="sep"/>
     <setting label="30201" type="bool" id="use_atl_names" default="false" />
     <setting label="30202" type="labelenum" id="history_length" values="5|10|15|20|25" default="10" />
