@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-# Module: apizonamobi
 # License: GPL v.3 https://www.gnu.org/copyleft/gpl.html
 
 import requests
@@ -688,6 +687,8 @@ class ZonaMobi:
         else:
             poster = item['cover']
 
+        poster = poster.replace('https://', 'http://')
+        fanart = fanart.replace('https://', 'http://')
         thumb = poster
 
         #Titles
@@ -716,7 +717,7 @@ class ZonaMobi:
             #Cast
             for actor in persons.get('actors', []):
                 cast.append({'name': actor['name'],
-                             'thumbnail': actor['cover']})
+                             'thumbnail': actor['cover'].replace('https://', 'http://')})
 
             #Director
             for _director in persons.get('director', []):
@@ -750,7 +751,7 @@ class ZonaMobi:
                 mobi_link_id = _episode.get('mobi_link_id','')
 
                 mediatype = 'episode'
-                thumb = data['images'].get(str(mobi_link_id))
+                thumb = data['images'].get(str(mobi_link_id)).replace('https://', 'http://')
 
                 release_date = _episode.get('release_date')
                 if release_date:
